@@ -53,6 +53,11 @@ actor PlaybackDebugJournal {
         let storageError: String?
     }
 
+    enum ReportFormat: String, Sendable {
+        case jsonLines = "jsonl"
+        case text = "txt"
+    }
+
     private struct Segment {
         let url: URL
         let hour: Int
@@ -146,20 +151,27 @@ actor PlaybackDebugJournal {
                      discardedForBounds: discardedForBounds, invalidLines: invalidLines, storageError: storageError)
     }
 
-    /// A separate immutable JSONL file; later recording/clearing cannot alter a share.
-    func makeShareReport(now: Date = Date(), focusedCapture: String? = nil, captureDate: Date? = nil) throws -> URL {
+    /// Export an immutable UTF-8 snapshot of the retained journal.
+    func makeShareReport(now: Date = Date(), format: ReportFormat = .jsonLines,
+                         focusedCapture: String? = nil, captureDate: Date? = nil) throws -> URL {
         try load()
         try prune(now: now, force: true)
         try FileManager.default.createDirectory(at: reportDirectory, withIntermediateDirectories: true)
         for old in try FileManager.default.contentsOfDirectory(at: reportDirectory, includingPropertiesForKeys: nil) {
             let parts = old.deletingPathExtension().lastPathComponent.split(separator: "-")
-            if old.lastPathComponent.hasPrefix("philharmonic-debug-"), old.pathExtension == "jsonl",
+            if old.lastPathComponent.hasPrefix("philharmonic-debug-"), ReportFormat(rawValue: old.pathExtension) != nil,
                parts.count > 3, let seconds = TimeInterval(parts[2]), now.timeIntervalSince1970 - seconds > Self.retention {
                 try? FileManager.default.removeItem(at: old)
             }
         }
-        let destination = reportDirectory.appendingPathComponent("philharmonic-debug-\(Int(now.timeIntervalSince1970))-\(UUID().uuidString).jsonl")
+        let destination = reportDirectory
+            .appendingPathComponent("philharmonic-debug-\(Int(now.timeIntervalSince1970))-\(UUID().uuidString)")
+            .appendingPathExtension(format.rawValue)
         guard FileManager.default.createFile(atPath: destination.path, contents: nil) else { throw CocoaError(.fileWriteUnknown) }
+        var reportComplete = false
+        defer {
+            if !reportComplete { try? FileManager.default.removeItem(at: destination) }
+        }
         try protect(destination)
         let handle = try FileHandle(forWritingTo: destination)
         defer { try? handle.close() }
@@ -181,6 +193,7 @@ actor PlaybackDebugJournal {
                 row.append(0x0A); try handle.write(contentsOf: row)
             }
         }
+        reportComplete = true
         return destination
     }
 

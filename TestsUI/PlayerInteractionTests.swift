@@ -234,6 +234,28 @@ final class PlayerInteractionTests: XCTestCase {
         XCTAssertTrue(copy.isEnabled, "Stopping capture must preserve the report for copying.")
         XCTAssertTrue(app.buttons["Share Report"].isEnabled)
         copy.tap()
+        let saveText = app.buttons["debug-save-log-txt"]
+        reachDebugControl(saveText, in: app)
+        saveText.tap()
+        let cancelExport = app.buttons["Cancel"].firstMatch
+        let saveExport = app.buttons["Save"].firstMatch
+        XCTAssertTrue(saveExport.waitForExistence(timeout: 12))
+        XCTAssertTrue(cancelExport.exists)
+        attach(app, named: "debug-native-save-log-txt")
+        cancelExport.tap()
+        XCTAssertTrue(saveText.waitForExistence(timeout: 8))
+        reachDebugControl(saveText, in: app)
+        saveText.tap()
+        XCTAssertTrue(saveExport.waitForExistence(timeout: 12))
+        if !saveExport.isEnabled {
+            let onDevice = app.staticTexts["On My iPhone"].firstMatch
+            XCTAssertTrue(onDevice.exists)
+            onDevice.tap()
+        }
+        XCTAssertTrue(saveExport.isEnabled)
+        saveExport.tap()
+        XCTAssertTrue(saveText.waitForExistence(timeout: 8))
+        XCTAssertFalse(saveExport.exists)
         let share = app.buttons["debug-share-report"]
         reachDebugControl(share, in: app)
         share.tap()

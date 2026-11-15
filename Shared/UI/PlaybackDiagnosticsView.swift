@@ -5,7 +5,7 @@ import UIKit
 struct PlaybackDiagnosticsView: View {
     @EnvironmentObject private var model: AppModel
     @ObservedObject var diagnostics: PlaybackDiagnostics
-    @State private var shareReport: DebugShareReport?
+    @State private var report: DebugReport?
     @State private var preparingReport = false
     @State private var errorMessage: String?
     @State private var confirmingClear = false
@@ -85,7 +85,7 @@ struct PlaybackDiagnosticsView: View {
                     Text("1. The standard log is already running. For extra detail, start a capture before reproducing the problem.")
                     Text("2. Return to Now Playing and tap Play. Repeat the actions that cause the problem, such as pausing, resuming or changing audio output.")
                     Text("3. Keep Philharmonic open for at least 45 seconds, or until the failure is captured.")
-                    Text("4. Return here to share the full retained log, or copy its newest entries.")
+                    Text("4. Return here to save or share the full retained log, or copy its newest entries.")
                 }
                 .font(.subheadline)
                 .fixedSize(horizontal: false, vertical: true)
@@ -95,19 +95,17 @@ struct PlaybackDiagnosticsView: View {
 
             Section("Report") {
                 VStack(alignment: .leading, spacing: 12) {
-                    Button {
-                        model.captureDebugSnapshot()
-                        preparingReport = true
-                        Task {
-                            defer { preparingReport = false }
-                            do { shareReport = DebugShareReport(url: try await diagnostics.makeHistoryReport()) }
-                            catch { errorMessage = PlaybackDiagnosticLog.sanitizedError(error) }
-                        }
-                    } label: {
+                    Button { prepareReport(.jsonLines) } label: {
                         Label("Share Report", systemImage: "square.and.arrow.up")
                     }
                     .frame(minHeight: 44)
                     .accessibilityIdentifier("debug-share-report")
+
+                    Button { prepareReport(.text) } label: {
+                        Label("Save Log as TXT", systemImage: "square.and.arrow.down")
+                    }
+                    .frame(minHeight: 44)
+                    .accessibilityIdentifier("debug-save-log-txt")
 
                     Button {
                         Task {
@@ -137,7 +135,12 @@ struct PlaybackDiagnosticsView: View {
         .toolbarBackground(Color.philharmonicBackground, for: .navigationBar)
         .task { model.captureDebugSnapshot(); await diagnostics.refreshHistory() }
         .refreshable { model.captureDebugSnapshot(); await diagnostics.refreshHistory() }
-        .sheet(item: $shareReport) { DiagnosticsShareSheet(reportURL: $0.url) }
+        .sheet(item: $report) { item in
+            switch item.format {
+            case .jsonLines: DiagnosticsShareSheet(reportURL: item.url)
+            case .text: DiagnosticsSaveSheet(reportURL: item.url) { report = nil }
+            }
+        }
         .confirmationDialog("Clear the local debug log?", isPresented: $confirmingClear, titleVisibility: .visible) {
             Button("Clear Log", role: .destructive) {
                 Task {
@@ -151,6 +154,17 @@ struct PlaybackDiagnosticsView: View {
         } message: { Text(errorMessage ?? "") }
     }
 
+    private func prepareReport(_ format: PlaybackDebugJournal.ReportFormat) {
+        guard !preparingReport else { return }
+        model.captureDebugSnapshot()
+        preparingReport = true
+        Task {
+            defer { preparingReport = false }
+            do { report = DebugReport(url: try await diagnostics.makeHistoryReport(format: format), format: format) }
+            catch { errorMessage = PlaybackDiagnosticLog.sanitizedError(error) }
+        }
+    }
+
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 20, style: .continuous)
             .fill(Color.philharmonicSurface)
@@ -161,9 +175,10 @@ struct PlaybackDiagnosticsView: View {
     }
 }
 
-private struct DebugShareReport: Identifiable {
+private struct DebugReport: Identifiable {
     let id = UUID()
     let url: URL
+    let format: PlaybackDebugJournal.ReportFormat
 }
 
 private struct DebugLogPreviewView: View {

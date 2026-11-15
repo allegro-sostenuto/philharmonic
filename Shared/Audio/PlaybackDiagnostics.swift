@@ -68,9 +68,9 @@ import Foundation
         historyStatus = await journal.status()
     }
 
-    func makeHistoryReport() async throws -> URL {
+    func makeHistoryReport(format: PlaybackDebugJournal.ReportFormat = .jsonLines) async throws -> URL {
         await pendingHistory?.value
-        return try await journal.makeShareReport(focusedCapture: captureStartedAt == nil ? nil : report,
+        return try await journal.makeShareReport(format: format, focusedCapture: captureStartedAt == nil ? nil : report,
                                                 captureDate: captureStartedAt)
     }
 

@@ -42,6 +42,36 @@ final class PlaybackDebugJournalTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: unrelated.path))
     }
 
+    func testTextExportIncludesTheFullRetainedJournal() async throws {
+        let root = folder(); defer { try? FileManager.default.removeItem(at: root) }
+        let log = PlaybackDebugJournal(directory: root.appendingPathComponent("log"), reportDirectory: root.appendingPathComponent("reports"))
+        let cutoff = origin.addingTimeInterval(1)
+        let now = cutoff.addingTimeInterval(PlaybackDebugJournal.retention)
+        await log.record(event("expired", at: origin), now: origin)
+        await log.record(event("retained-at-cutoff", at: cutoff), now: cutoff)
+        for index in 0..<128 {
+            await log.record(.init(date: now, category: "test", name: "recent-\(index)",
+                                   details: ["message": String(repeating: "é", count: 300)]), now: now)
+        }
+
+        let copied = try await log.recentText(now: now)
+        XCTAssertFalse(copied.contains("retained-at-cutoff"))
+        let text = try await log.makeShareReport(now: now, format: .text, focusedCapture: "Programme à venir", captureDate: now)
+        let shared = try await log.makeShareReport(now: now, focusedCapture: "Programme à venir", captureDate: now)
+        XCTAssertEqual(text.pathExtension, "txt")
+        XCTAssertEqual(shared.pathExtension, "jsonl")
+        let textData = try Data(contentsOf: text)
+        XCTAssertGreaterThan(textData.count, 64 * 1024)
+        let textLines = textData.split(separator: 0x0A).dropFirst()
+        let sharedLines = try Data(contentsOf: shared).split(separator: 0x0A).dropFirst()
+        let decoder = JSONDecoder()
+        let entries = try textLines.map { try decoder.decode(PlaybackDebugJournal.Event.self, from: Data($0)) }
+        XCTAssertEqual(textLines.dropLast(), sharedLines.dropLast(), "Both exports include the same retained events in order")
+        XCTAssertEqual(entries.first?.name, "retained-at-cutoff")
+        XCTAssertFalse(entries.contains { $0.name == "expired" })
+        XCTAssertEqual(entries.last?.details["message"], "Programme à venir")
+    }
+
     func testStorageBoundsKeepTheNewestEventsWithoutUnboundedSegments() async throws {
         let root = folder(); defer { try? FileManager.default.removeItem(at: root) }
         let log = PlaybackDebugJournal(directory: root.appendingPathComponent("log"), reportDirectory: root.appendingPathComponent("reports"),

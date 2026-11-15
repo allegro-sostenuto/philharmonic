@@ -40,19 +40,52 @@ final class ScheduledSpeakerCategoryTests: XCTestCase {
         XCTAssertFalse(events.contains { $0.name == "scheduled_start_expired_without_playing" })
     }
 
-    @MainActor func testRejectedCategoryOnHeadphonesStillWaitsWithoutPlayingOnWrongOutput() {
+    @MainActor func testCapturedBluetoothCategoryRejectionsKeepTheScheduleSilentUntilExpiry() async throws {
         let model = AppModel.shared
         defer { model.finishScheduleForTesting() }
-        model.configureScheduleForTesting(secondsUntilStart: -1, environment: environment(route: headphones))
+        // Start from the wait state at the beginning of the November 15 excerpt.
+        // The first attempt at the scheduled time is outside the supplied tail.
+        var lateness: TimeInterval = 551.943
+        model.configureScheduleForTesting(secondsUntilStart: -lateness, environment: environment(route: headphones))
+        let id = try XCTUnwrap(model.scheduleIDForTesting).uuidString
+        let retryTimes = [557.948, 563.901, 569.928, 575.968, 581.901, 587.951, 593.901, 599.918]
+        for time in retryTimes {
+            model.advanceScheduleForTesting(seconds: time - lateness)
+            lateness = time
+            XCTAssertFalse(model.isPlaying)
+            XCTAssertFalse(model.scheduleStateForTesting.owned)
+            XCTAssertTrue(model.scheduleStateForTesting.standby)
+            XCTAssertTrue(model.sessionStateForTesting.mixing)
+            XCTAssertEqual(model.sessionCategoriesForTesting.last, .playback)
+            XCTAssertEqual(model.currentOutputRoute, headphones)
+            XCTAssertEqual(model.scheduledGainBoundaryState.gain, 0)
+        }
+
+        model.advanceScheduleForTesting(seconds: 600.968 - lateness)
+        XCTAssertFalse(model.scheduleStateForTesting.exists)
+        XCTAssertFalse(model.scheduleStateForTesting.standby)
+        model.advanceScheduleForTesting(seconds: 0.215, route: speaker)
+        XCTAssertEqual(model.currentOutputRoute, speaker)
         XCTAssertFalse(model.isPlaying)
-        XCTAssertFalse(model.scheduleStateForTesting.owned)
-        XCTAssertTrue(model.scheduleStateForTesting.standby)
-        XCTAssertTrue(model.sessionStateForTesting.mixing)
-        XCTAssertTrue(model.sessionCategoriesForTesting.contains(.playAndRecord))
-        XCTAssertEqual(model.sessionCategoriesForTesting.last, .playback)
-        XCTAssertEqual(model.currentOutputRoute, headphones)
         XCTAssertEqual(model.audioRecoveryStateForTesting.connections, 0)
-        XCTAssertEqual(model.scheduledGainBoundaryState.gain, 0)
+
+        let report = try await model.diagnostics.makeHistoryReport()
+        let events = try String(contentsOf: report, encoding: .utf8).split(separator: "\n").compactMap {
+            try? JSONDecoder().decode(PlaybackDebugJournal.Event.self, from: Data($0.utf8))
+        }.filter { $0.scheduleID == id }
+        let failures = events.filter { $0.name == "audio_session_activation_failed" }.dropFirst()
+        let restored = events.filter { $0.name == "audio_session_activation_succeeded" }.dropFirst()
+        let expiry = try XCTUnwrap(events.first { $0.name == "scheduled_start_expired_without_playing" })
+        XCTAssertEqual(failures.count, retryTimes.count)
+        XCTAssertTrue(failures.allSatisfy { $0.details["step"] == "set_category" && $0.details["error_code"] == "560557684" })
+        XCTAssertEqual(restored.count, retryTimes.count)
+        let restoreRequests = events.filter {
+            $0.name == "audio_session_activation_started" && $0.details["category_requested"] == AVAudioSession.Category.playback.rawValue
+        }.dropFirst()
+        XCTAssertEqual(restoreRequests.count, retryTimes.count)
+        XCTAssertTrue(restoreRequests.allSatisfy { $0.details["output_types"] == "BluetoothA2DPOutput" })
+        XCTAssertEqual(expiry.details["media_progress_observed_this_session"], "false")
+        print("BLUETOOTH_REPLAY category_failures=\(failures.count) restored_playback=\(restored.count) connections=\(model.audioRecoveryStateForTesting.connections) expired=true")
     }
 
     @MainActor func testAlreadySpeakerStillRequiresActivationAndPreservesForegroundFocus() {

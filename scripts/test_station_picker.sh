@@ -83,7 +83,10 @@ if [ "${PHILHARMONIC_MAP_QUALITY_ONLY:-0}" = 1 ]; then
     fi
 fi
 if [ "${PHILHARMONIC_DEBUG_UI_ONLY:-0}" = 1 ]; then
-    tests=(-only-testing:PhilharmonicUITests/PlayerInteractionTests/testDiagnosticsCaptureCanBeStartedStoppedAndSharedFromSettings)
+    tests=(
+        -only-testing:PhilharmonicUITests/PlayerInteractionTests/testDiagnosticsCaptureCanBeStartedStoppedAndSharedFromSettings
+        -only-testing:PhilharmonicUITests/BackgroundAudioSessionProbeTests
+    )
 fi
 if [ "${PHILHARMONIC_SCHEDULE_VOLUME_ONLY:-0}" = 1 ]; then
     tests=(-only-testing:PhilharmonicUITests/ScheduledVolumeUITests)

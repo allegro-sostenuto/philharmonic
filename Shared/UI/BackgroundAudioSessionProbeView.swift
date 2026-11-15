@@ -36,34 +36,36 @@ import UIKit
         .onDisappear { probeTask?.cancel(); phase = "cancelled"; cleanup() }
     }
     private func runBackgroundProbe() {
-        attempt("background_playback") {
-            try audio.setCategory(.playback, mode: .default, policy: .default, options: [.mixWithOthers])
-            try audio.setActive(true)
-        }
-        attempt("background_play_and_record") {
-            try audio.setCategory(.playAndRecord, mode: .default, policy: .default,
-                                  options: [.defaultToSpeaker, .mixWithOthers])
-            try audio.setActive(true)
-        }
-        attempt("background_playback_restore") {
-            try audio.setCategory(.playback, mode: .default, policy: .default, options: [.mixWithOthers])
-            try audio.setActive(true)
-        }
+        let speakerOptions: AVAudioSession.CategoryOptions = [.defaultToSpeaker, .mixWithOthers]
+        configure("background_play_and_record", category: .playAndRecord, options: speakerOptions)
+        configure("background_playback_restore", category: .playback, options: [.mixWithOthers])
+        standby.stop()
+        configure("background_play_and_record_standby_stopped", category: .playAndRecord, options: speakerOptions)
         cleanup(); phase = "complete"
     }
     private func prepare() {
-        attempt("foreground_prepare") {
-            try audio.setCategory(.playback, mode: .default, policy: .default, options: [.mixWithOthers])
-            try audio.setActive(true)
-            try standby.start()
-        }
+        configure("foreground_prepare", category: .playback, options: [.mixWithOthers], startStandby: true)
         phase = standby.running ? "prepared" : "failed"
     }
-    private func attempt(_ name: String, action: () throws -> Void) {
+    private func configure(_ name: String, category: AVAudioSession.Category,
+                           options: AVAudioSession.CategoryOptions, startStandby: Bool = false) {
         var entry: [String: Any] = ["name": name, "ios": UIDevice.current.systemVersion,
-                                  "app_state": UIApplication.shared.applicationState == .background ? "background" : "foreground"]
-        do { try action(); entry["result"] = "success" }
-        catch { let error = error as NSError; entry["result"] = "failure"; entry["error_code"] = error.code; entry["error_domain"] = error.domain }
+                                  "app_state": UIApplication.shared.applicationState == .background ? "background" : "foreground",
+                                  "previous_category": audio.category.rawValue, "previous_options": audio.categoryOptions.rawValue,
+                                  "previous_outputs": audio.currentRoute.outputs.map { $0.portType.rawValue },
+                                  "standby_before_attempt": standby.running]
+        var step = "set_category"
+        do {
+            try audio.setCategory(category, mode: .default, policy: .default, options: options)
+            step = "set_active"
+            try audio.setActive(true)
+            if startStandby { step = "start_standby"; try standby.start() }
+            entry["result"] = "success"
+        } catch {
+            let error = error as NSError
+            entry["result"] = "failure"; entry["failed_step"] = step
+            entry["error_code"] = error.code; entry["error_domain"] = error.domain
+        }
         entry["category"] = audio.category.rawValue
         entry["options"] = audio.categoryOptions.rawValue
         entry["outputs"] = audio.currentRoute.outputs.map { $0.portType.rawValue }

@@ -24,10 +24,14 @@ final class BackgroundAudioSessionProbeTests: XCTestCase {
             try XCTUnwrap(JSONSerialization.jsonObject(with: Data($0.utf8)) as? [String: Any])
         }
         XCTAssertEqual(entries.count, 4)
-        for name in ["background_playback", "background_play_and_record", "background_playback_restore"] {
+        let comparison = [("background_play_and_record", true), ("background_play_and_record_standby_stopped", false)]
+        for (name, standbyRunning) in comparison {
             let entry = try XCTUnwrap(entries.first { $0["name"] as? String == name })
             XCTAssertEqual(entry["app_state"] as? String, "background")
             XCTAssertGreaterThanOrEqual(try XCTUnwrap(entry["background_elapsed_seconds"] as? Double), 30)
+            XCTAssertEqual(entry["previous_category"] as? String, "AVAudioSessionCategoryPlayback")
+            XCTAssertEqual(entry["previous_options"] as? Int, 1)
+            XCTAssertEqual(entry["standby_before_attempt"] as? Bool, standbyRunning)
         }
         let attachment = XCTAttachment(string: report)
         attachment.name = "real-background-audio-session-probe"; attachment.lifetime = .keepAlways
