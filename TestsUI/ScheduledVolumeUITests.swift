@@ -24,6 +24,7 @@ final class ScheduledVolumeUITests: XCTestCase {
             done.tap()
             XCTAssertTrue(row.waitForExistence(timeout: 5))
             XCTAssertTrue(row.label.contains("Prepare"))
+            XCTAssertTrue(app.staticTexts["scheduled-current-output"].exists)
             XCTAssertFalse(row.label.contains("%"), "A prior confirmation is not the current speaker volume")
             capture("scheduled-volume-prepare-" + (dark ? "dark" : "light"))
             row.tap()

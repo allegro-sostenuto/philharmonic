@@ -32,6 +32,9 @@ final class BackgroundAudioSessionProbeTests: XCTestCase {
             XCTAssertEqual(entry["previous_category"] as? String, "AVAudioSessionCategoryPlayback")
             XCTAssertEqual(entry["previous_options"] as? Int, 1)
             XCTAssertEqual(entry["standby_before_attempt"] as? Bool, standbyRunning)
+            if !standbyRunning, entry["result"] as? String == "success" {
+                XCTAssertEqual(entry["session_deactivated"] as? Bool, true)
+            }
         }
         let attachment = XCTAttachment(string: report)
         attachment.name = "real-background-audio-session-probe"; attachment.lifetime = .keepAlways

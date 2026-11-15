@@ -77,8 +77,10 @@ final class ScheduledSpeakerCategoryTests: XCTestCase {
         let failures = events.filter { $0.name == "audio_session_activation_failed" }.dropFirst()
         let restored = events.filter { $0.name == "audio_session_activation_succeeded" }.dropFirst()
         let expiry = try XCTUnwrap(events.first { $0.name == "scheduled_start_expired_without_playing" })
-        XCTAssertEqual(failures.count, bluetoothRetryTimes.count)
+        XCTAssertEqual(failures.count, bluetoothRetryTimes.count + 1)
         XCTAssertTrue(failures.allSatisfy { $0.details["step"] == "set_category" && $0.details["error_code"] == "560557684" })
+        XCTAssertEqual(events.filter { $0.name == "scheduled_speaker_reset_started" }.count, 1)
+        XCTAssertEqual(events.filter { $0.name == "scheduled_speaker_reset_failed" }.count, 1)
         XCTAssertEqual(restored.count, bluetoothRetryTimes.count)
         let restoreRequests = events.filter {
             $0.name == "audio_session_activation_started" && $0.details["category_requested"] == AVAudioSession.Category.playback.rawValue
@@ -118,11 +120,30 @@ final class ScheduledSpeakerCategoryTests: XCTestCase {
         print("BLUETOOTH_INACTIVE_SESSION_REPLAY category_failures=\(failures.count) connections=\(connections) gain=\(gainBeforeExpiry) speaker=\(routedToSpeaker) expired=\(expired)")
         XCTAssertEqual(failures.count, 1)
         XCTAssertEqual(failures.first?.details["step"], "set_category")
+        XCTAssertEqual(events.filter { $0.name == "scheduled_speaker_session_deactivated" }.count, 1)
+        XCTAssertEqual(events.filter { $0.name == "scheduled_speaker_reset_succeeded" }.count, 1)
         XCTAssertEqual(connections, 1)
         XCTAssertTrue(routedToSpeaker)
         XCTAssertGreaterThan(gainBeforeExpiry, 0)
         XCTAssertFalse(expired)
         XCTAssertTrue(events.contains { $0.name == "schedule_retired" })
+    }
+
+    @MainActor func testSpeakerReturningViaCategoryChangeWakesTheRetry() {
+        let model = AppModel.shared
+        defer { model.finishScheduleForTesting() }
+        model.configureScheduleForTesting(secondsUntilStart: 120, environment: environment(route: headphones))
+        model.advanceScheduleForTesting(seconds: 120)
+        XCTAssertFalse(model.isPlaying)
+        XCTAssertTrue(model.scheduleStateForTesting.standby)
+        XCTAssertEqual(model.audioRecoveryStateForTesting.connections, 0)
+
+        model.advanceScheduleForTesting(seconds: 1, route: speaker, routeChangeReason: .categoryChange)
+        XCTAssertTrue(model.isPlaying, "Speaker is available before the ordinary retry delay has elapsed")
+        XCTAssertEqual(model.audioRecoveryStateForTesting.connections, 1)
+        XCTAssertEqual(model.sessionCategoriesForTesting.last, .playback)
+        XCTAssertEqual(model.currentOutputRoute, speaker)
+        XCTAssertEqual(model.scheduledGainBoundaryState.gain, 0)
     }
 
     @MainActor func testAlreadySpeakerStillRequiresActivationAndPreservesForegroundFocus() {

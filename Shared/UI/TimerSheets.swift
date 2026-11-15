@@ -252,7 +252,6 @@ struct ScheduledStartView: View {
             Text("Sets speaker volume now. Other audio is interrupted only if setup needs to switch to the speaker. Later volume changes still apply.")
                 .font(.caption).foregroundStyle(.secondary)
 
-            if outputMode == .selected {
             HStack(spacing: 14) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Currently selected")
@@ -261,6 +260,7 @@ struct ScheduledStartView: View {
                     Text(model.currentOutputName)
                         .font(.body.weight(.medium))
                         .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("scheduled-current-output")
                 }
                 Spacer(minLength: 0)
                 AudioRoutePicker()
@@ -270,10 +270,13 @@ struct ScheduledStartView: View {
                     .accessibilityLabel("Choose audio output")
             }
 
-            Text("Choosing an output changes the system route immediately.")
+            Text(outputMode == .speaker
+                 ? "Select iPhone here before locking to avoid a route switch at start time."
+                 : "Choosing an output changes the system route immediately.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
+            if outputMode == .selected {
                 Button {
                     // Read the real route at confirmation; opening or dismissing
                     // Apple's picker is not proof that an output changed.
@@ -319,7 +322,7 @@ struct ScheduledStartView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
-                Text("Starts on the iPhone speaker even with headphones connected. Disconnecting an output does not cancel this start. Temporary audio interruptions keep it armed until iOS permits playback.")
+                Text("Scheduled audio plays only through the iPhone speaker. The start waits while iOS prevents access to the speaker.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

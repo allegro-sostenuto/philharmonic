@@ -39,8 +39,13 @@ import UIKit
         let speakerOptions: AVAudioSession.CategoryOptions = [.defaultToSpeaker, .mixWithOthers]
         configure("background_play_and_record", category: .playAndRecord, options: speakerOptions)
         configure("background_playback_restore", category: .playback, options: [.mixWithOthers])
+        let handoffTask = UIApplication.shared.beginBackgroundTask(withName: "Probe scheduled speaker audio")
+        defer {
+            if handoffTask != .invalid { UIApplication.shared.endBackgroundTask(handoffTask) }
+        }
         standby.stop()
-        configure("background_play_and_record_standby_stopped", category: .playAndRecord, options: speakerOptions)
+        configure("background_play_and_record_standby_stopped", category: .playAndRecord, options: speakerOptions,
+                  deactivateFirst: true)
         cleanup(); phase = "complete"
     }
     private func prepare() {
@@ -48,7 +53,7 @@ import UIKit
         phase = standby.running ? "prepared" : "failed"
     }
     private func configure(_ name: String, category: AVAudioSession.Category,
-                           options: AVAudioSession.CategoryOptions, startStandby: Bool = false) {
+                           options: AVAudioSession.CategoryOptions, startStandby: Bool = false, deactivateFirst: Bool = false) {
         var entry: [String: Any] = ["name": name, "ios": UIDevice.current.systemVersion,
                                   "app_state": UIApplication.shared.applicationState == .background ? "background" : "foreground",
                                   "previous_category": audio.category.rawValue, "previous_options": audio.categoryOptions.rawValue,
@@ -56,6 +61,12 @@ import UIKit
                                   "standby_before_attempt": standby.running]
         var step = "set_category"
         do {
+            if deactivateFirst {
+                step = "deactivate"
+                try audio.setActive(false)
+                entry["session_deactivated"] = true
+            }
+            step = "set_category"
             try audio.setCategory(category, mode: .default, policy: .default, options: options)
             step = "set_active"
             try audio.setActive(true)

@@ -146,6 +146,7 @@ import Network
     private var volumeSetupSuspension: VolumeSetupSuspension?
     private var scheduledBattery = ScheduledBatteryGuard()
     private var speakerSessionActive = false
+    private var scheduledSpeakerResetAttempted = false
     private var sessionMixesWithOthers = false
     private var scheduledHasAudioFocus = false
     private var pendingProtectedSchedule = false
@@ -879,7 +880,8 @@ import Network
     func advanceScheduleForTesting(seconds: TimeInterval = 0, plugged: Bool? = nil, level: Double? = nil,
                                    route: ObservedAudioRoute? = nil, activationFails: Bool? = nil,
                                    otherAudioPlaying: Bool? = nil, backgrounded: Bool? = nil,
-                                   exclusiveActivationFails: Bool? = nil, speakerOverrideFails: Bool? = nil) {
+                                   exclusiveActivationFails: Bool? = nil, speakerOverrideFails: Bool? = nil,
+                                   routeChangeReason: AVAudioSession.RouteChangeReason = .oldDeviceUnavailable) {
         scheduleTestEnvironment?.now.addTimeInterval(seconds)
         if let environment = scheduleTestEnvironment { scheduleTestEnvironment?.uptime = environment.uptime + seconds }
         if let plugged { scheduleTestEnvironment?.plugged = plugged }
@@ -891,7 +893,7 @@ import Network
         if let speakerOverrideFails { scheduleTestEnvironment?.speakerOverrideFails = speakerOverrideFails }
         if let route {
             scheduleTestEnvironment?.route = route
-            handleRouteChange(reason: AVAudioSession.RouteChangeReason.oldDeviceUnavailable.rawValue)
+            handleRouteChange(reason: routeChangeReason.rawValue)
         }
         retryInterruptedPlayback()
         evaluateSchedule()
@@ -1394,14 +1396,9 @@ import Network
         // Gain reaches the player before session activation, reconnect, or play.
         applyGain()
         let preparingSilently = scheduleNow < request.date && !scheduleUserInitiated
-        do { try activateSession(forceSpeaker: !preparingSilently && scheduledSpeakerRequired,
-                                 mixWithOthers: scheduledSessionShouldMix) }
-        catch {
-            if request.survivesInterruption { waitForScheduledAudio("Waiting for iPhone audio; scheduled start remains armed.", error: error) }
-            else { scheduleFallback("Philharmonic could not activate audio. Tap to try again.") }
-            return
-        }
-        guard validateScheduledRoute(request) else { return }
+        guard acquireScheduledStartAudio(request, forceSpeaker: !preparingSilently && scheduledSpeakerRequired) else { return }
+        resolveExpiredSchedule()
+        guard scheduleRequest?.id == request.id, validateScheduledRoute(request) else { return }
         if scheduleAudioWaitReason != nil { recordDebugEvent(category: "scheduler", name: "schedule_audio_recovered") }
         scheduleAudioWaitReason = nil; scheduleRetryUptime = 0
         scheduleOwnsPlayback = true; scheduleEnvelope = nil; scheduleReachedFullGain = false
@@ -1412,6 +1409,74 @@ import Network
         applyGain()
         setSchedulePhase(.preparing)
         ensureTicker(); startGainDriver(); startConnection(); fetchMetadata()
+    }
+
+    private func acquireScheduledStartAudio(_ request: ScheduledStartRequest, forceSpeaker: Bool) -> Bool {
+        let hadStandby = standbyIsRunning
+        do {
+            try activateSession(forceSpeaker: forceSpeaker, mixWithOthers: scheduledSessionShouldMix)
+            return true
+        } catch {
+            var failure = error
+            var backgroundTask = UIBackgroundTaskIdentifier.invalid
+            defer {
+                if backgroundTask != .invalid { UIApplication.shared.endBackgroundTask(backgroundTask) }
+            }
+            let cause = error as NSError
+            // After a denied standby handoff, configure the category before
+            // activation. Keep an existing player and foreground setup out of
+            // this path. A failed retry restores standby below before giving up
+            // the short background assertion.
+            if forceSpeaker, request.survivesInterruption, !scheduleUserInitiated, !scheduleDidStart,
+               !scheduledSpeakerResetAttempted, hadStandby, !hasStartedEngine, !wantsPlayback,
+               applicationStateDescription == "background", audioSessionActivationStep == "set_category",
+               cause.domain == NSOSStatusErrorDomain,
+               cause.code == AVAudioSession.ErrorCode.cannotInterruptOthers.rawValue {
+                scheduledSpeakerResetAttempted = true
+                if !isScheduleTesting {
+                    backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Reconfigure scheduled speaker audio")
+                }
+                if backgroundTask != .invalid || isScheduleTesting {
+                    do {
+                        try activateSpeakerAfterStoppingStandby()
+                        return true
+                    } catch { failure = error }
+                } else {
+                    recordDebugEvent(category: "audio_session", name: "scheduled_speaker_reset_skipped",
+                                     details: ["reason": "background_time_unavailable"])
+                }
+            }
+            if request.survivesInterruption {
+                waitForScheduledAudio("Waiting for iPhone audio; scheduled start remains armed.", error: failure)
+            } else {
+                scheduleFallback("Philharmonic could not activate audio. Tap to try again.")
+            }
+            return false
+        }
+    }
+
+    private func activateSpeakerAfterStoppingStandby() throws {
+        recordDebugEvent(category: "audio_session", name: "scheduled_speaker_reset_started")
+        stopStandby(reason: "speaker_session_change")
+        do {
+            if isScheduleTesting {
+                #if DEBUG
+                scheduleTestEnvironment?.audioSessionActive = false
+                #endif
+            } else {
+                try AVAudioSession.sharedInstance().setActive(false)
+            }
+            speakerSessionActive = false
+            sessionMixesWithOthers = false
+            recordDebugEvent(category: "audio_session", name: "scheduled_speaker_session_deactivated")
+            try activateSession(forceSpeaker: true, mixWithOthers: true)
+            try? startStandby()
+            recordDebugEvent(category: "audio_session", name: "scheduled_speaker_reset_succeeded")
+        } catch {
+            recordDebugEvent(category: "audio_session", name: "scheduled_speaker_reset_failed",
+                             details: ["error": PlaybackDiagnosticLog.sanitizedError(error)])
+            throw error
+        }
     }
 
     private func validateScheduledRoute(_ request: ScheduledStartRequest) -> Bool {
@@ -1508,6 +1573,7 @@ import Network
         scheduledBattery = ScheduledBatteryGuard(); scheduleUsingSpeakerFallback = false
         scheduleReachedFullGain = false; scheduleRetryUptime = 0; schedulePausedUntil = nil
         scheduleAudioWaitReason = nil; scheduleLastAudioError = nil
+        scheduledSpeakerResetAttempted = false
         lastScheduleEventRetryUptime = nil; lastScheduleTickUptime = nil
         scheduleDidStart = false
         scheduledHasAudioFocus = false
@@ -2084,7 +2150,8 @@ import Network
         guard volumeSetupSuspension == nil else { return }
         if schedulePausedUntil != nil { return }
         let changed = !previous.matches(currentOutputRoute)
-        if changed, (reason == AVAudioSession.RouteChangeReason.newDeviceAvailable.rawValue
+        let speakerBecameAvailable = scheduledSpeakerRequired && currentOutputRoute.isBuiltInSpeaker
+        if changed, (speakerBecameAvailable || reason == AVAudioSession.RouteChangeReason.newDeviceAvailable.rawValue
             || reason == AVAudioSession.RouteChangeReason.oldDeviceUnavailable.rawValue) {
             retryScheduledAudio(after: "route_changed")
             if scheduleAudioWaitReason != nil { evaluateSchedule(); return }

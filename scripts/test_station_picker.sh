@@ -93,6 +93,9 @@ if [ "${PHILHARMONIC_SCHEDULE_VOLUME_ONLY:-0}" = 1 ]; then
 fi
 if [ "${PHILHARMONIC_SPEAKER_REPRO_ONLY:-0}" = 1 ]; then
     tests=(-only-testing:PhilharmonicUITests/BackgroundAudioSessionProbeTests)
+    if [ "${PHILHARMONIC_SCHEDULE_VOLUME_ONLY:-0}" = 1 ]; then
+        tests+=(-only-testing:PhilharmonicUITests/ScheduledVolumeUITests)
+    fi
 fi
 if [ "${PHILHARMONIC_NATIVE_STATION_UI_ONLY:-0}" = 1 ]; then
     tests=(
