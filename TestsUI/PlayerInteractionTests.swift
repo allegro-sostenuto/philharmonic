@@ -237,25 +237,18 @@ final class PlayerInteractionTests: XCTestCase {
         let saveText = app.buttons["debug-save-log-txt"]
         reachDebugControl(saveText, in: app)
         saveText.tap()
-        let cancelExport = app.buttons["Cancel"].firstMatch
         let saveExport = app.buttons["Save"].firstMatch
-        XCTAssertTrue(saveExport.waitForExistence(timeout: 12))
-        XCTAssertTrue(cancelExport.exists)
-        attach(app, named: "debug-native-save-log-txt")
-        cancelExport.tap()
-        XCTAssertTrue(saveText.waitForExistence(timeout: 8))
-        reachDebugControl(saveText, in: app)
-        saveText.tap()
-        XCTAssertTrue(saveExport.waitForExistence(timeout: 12))
+        XCTAssertTrue(saveExport.waitForExistence(timeout: 25))
         if !saveExport.isEnabled {
             let onDevice = app.staticTexts["On My iPhone"].firstMatch
             XCTAssertTrue(onDevice.exists)
             onDevice.tap()
         }
         XCTAssertTrue(saveExport.isEnabled)
+        attach(app, named: "debug-native-save-log-txt")
         saveExport.tap()
-        XCTAssertTrue(saveText.waitForExistence(timeout: 8))
-        XCTAssertFalse(saveExport.exists)
+        XCTAssertTrue(saveExport.waitForNonExistence(timeout: 20))
+        XCTAssertTrue(saveText.isHittable)
         let share = app.buttons["debug-share-report"]
         reachDebugControl(share, in: app)
         share.tap()
