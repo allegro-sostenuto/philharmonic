@@ -170,7 +170,9 @@ import Network
         var backgrounded = false
         var exclusiveActivationFails = false
         var audioCategory: AVAudioSession.Category = .playback
+        var audioSessionActive = false
         var speakerCategoryFails = false
+        var speakerCategoryRequiresInactiveSession = false
         var speakerOverrideFails = false
     }
     private var scheduleTestEnvironment: ScheduleTestEnvironment?
@@ -1920,7 +1922,8 @@ import Network
         #if DEBUG
         if let environment = scheduleTestEnvironment {
             sessionActivationAttempts.append((useSpeaker, mixing, options, category))
-            if category == .playAndRecord && environment.speakerCategoryFails {
+            if category == .playAndRecord && (environment.speakerCategoryFails ||
+                (environment.speakerCategoryRequiresInactiveSession && environment.audioSessionActive && previousCategory != category)) {
                 audioSessionActivationStep = "set_category"
                 throw NSError(domain: NSOSStatusErrorDomain, code: 560557684)
             }
@@ -1931,6 +1934,7 @@ import Network
             speakerSessionActive = speakerSessionRequired
             sessionMixesWithOthers = mixing
             scheduleTestEnvironment?.audioCategory = category
+            scheduleTestEnvironment?.audioSessionActive = true
             if useSpeaker, !environment.route.isBuiltInSpeaker {
                 audioSessionActivationStep = "override_speaker"
                 if environment.speakerOverrideFails { throw SilentStandby.StandbyError.failed }
