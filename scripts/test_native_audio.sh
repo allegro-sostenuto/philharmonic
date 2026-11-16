@@ -71,6 +71,7 @@ if [ "${PHILHARMONIC_STREAM_METADATA_ONLY:-0}" = 1 ]; then
         -only-testing:PhilharmonicTests/StationSwitchTests
         -only-testing:PhilharmonicTests/StationSourcePlaybackTests/testLivePieceAndComposerThroughNativePlayer
         -only-testing:PhilharmonicTests/StationSourcePlaybackTests/testRadioFranceMetadataUsesNativeBroadcastClock
+        -only-testing:PhilharmonicTests/StationSourcePlaybackTests/testWDRLiveListingComesFromItsOfficialPlayerFeed
     )
 fi
 if [ "${PHILHARMONIC_DEBUG_EVENTS_ONLY:-0}" = 1 ]; then

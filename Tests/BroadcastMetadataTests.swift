@@ -89,13 +89,26 @@ final class BroadcastMetadataTests: XCTestCase {
     }
 
     func testProgrammeStreamTitlesAreSeparateFromPieces() {
-        let wdr = "WDR 3 Mosaik mit Daniel Finkernagel"
         let oudeMuziek = "Zwerven door de Middeleeuwen (za 1 aug 2020 10:00)"
-        XCTAssertEqual(BroadcastMetadataParser.streamProgramme(wdr, capability: .wdr3), wdr)
         XCTAssertEqual(BroadcastMetadataParser.streamProgramme(oudeMuziek, capability: .concertzender), oudeMuziek)
-        XCTAssertNil(BroadcastMetadataParser.streamProgramme("WDR 3", capability: .wdr3))
         XCTAssertNil(BroadcastMetadataParser.streamProgramme("Concertzender Oude Muziek", capability: .concertzender))
-        XCTAssertNil(BroadcastMetadataParser.streamTitle(wdr, capability: .wdr3, receivedAt: Date()))
+        XCTAssertNil(BroadcastMetadataParser.streamTitle(oudeMuziek, capability: .concertzender, receivedAt: Date()))
+    }
+
+    func testWDRRadioTextPreservesTheBroadcasterCaptionAndExpires() throws {
+        let at = Date(timeIntervalSince1970: 100)
+        let caption = "Emilie Mayer - Quartett Nr. 9 g-Moll, op. 14"
+        let item = try XCTUnwrap(BroadcastMetadataParser.wdrRadioText(Data((caption + "\r\n").utf8), receivedAt: at))
+        XCTAssertEqual(item.programme, caption)
+        XCTAssertTrue(item.work.isEmpty)
+        XCTAssertTrue(item.composer.isEmpty)
+        let history = PlaybackTimeline(items: [item])
+        XCTAssertEqual(history.item(at: at.addingTimeInterval(30))?.programme, caption)
+        XCTAssertNil(history.item(at: at.addingTimeInterval(45)))
+        let latin = Data([0x4A, 0xF6, 0x72, 0x67])
+        XCTAssertEqual(BroadcastMetadataParser.wdrRadioText(latin, receivedAt: at)?.programme, "Jörg")
+        XCTAssertNil(BroadcastMetadataParser.wdrRadioText(Data("WDR 3".utf8), receivedAt: at))
+        XCTAssertNil(BroadcastMetadataParser.wdrRadioText(Data("<html>Unavailable</html>".utf8), receivedAt: at))
     }
 
     func testRadioFranceUsesItsOwnTimedSongAndExplicitComposerFields() throws {

@@ -48,7 +48,12 @@ final class MetadataService {
     func fetch(force: Bool = false, onCurrent: ([ProgrammeItem]) -> Void = { _ in }) async throws -> [ProgrammeItem] {
         try Task.checkCancellation()
         switch station.metadataCapability {
-        case .stationOnly, .swissClassic, .wfmt, .sacredMusic, .reformatorischeRadio6, .concertzender, .wdr3: return []
+        case .stationOnly, .swissClassic, .wfmt, .sacredMusic, .reformatorischeRadio6, .concertzender: return []
+        case .wdr3:
+            let data = try await Self.download(BroadcastMetadataParser.wdrRadioTextURL, session: session).get()
+            try Task.checkCancellation()
+            guard let listing = BroadcastMetadataParser.wdrRadioText(data, receivedAt: Date()) else { return [] }
+            return [listing]
         case .radioFrance:
             guard let stationID = station.radioFranceMetadataID else { return [] }
             let data = try await Self.download(BroadcastMetadataParser.radioFranceURL(stationID: stationID), session: session).get()

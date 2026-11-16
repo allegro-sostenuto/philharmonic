@@ -8,6 +8,17 @@ import FoundationXML
 enum BroadcastMetadataParser {
     static let hrtURL = URL(string: "https://np.tritondigital.com/public/nowplaying?mountName=HR_CLASSICS&numberToFetch=10&eventType=track")!
     static let srP2URL = URL(string: "https://api.sr.se/api/v2/playlists/rightnow?channelid=2562&format=json")!
+    static let wdrRadioTextURL = URL(string: "https://www.wdr.de/radio/radiotext/streamtitle_wdr3.txt")!
+
+    static func wdrRadioText(_ data: Data, receivedAt: Date) -> ProgrammeItem? {
+        let decoded = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1)
+        guard let text = decoded?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty,
+              text.count <= 1024, !text.hasPrefix("<"), text.rangeOfCharacter(from: .controlCharacters) == nil,
+              text.caseInsensitiveCompare("WDR 3") != .orderedSame else { return nil }
+        // The publisher alternates between track credits and programme captions.
+        return ProgrammeItem(id: "wdr3-radio-text", start: receivedAt, end: receivedAt.addingTimeInterval(45),
+                             work: "", programme: text)
+    }
 
     static func radioFranceURL(stationID: Int) -> URL {
         URL(string: "https://api.radiofrance.fr/livemeta/pull/\(stationID)")!
@@ -85,8 +96,6 @@ enum BroadcastMetadataParser {
         guard let name = title?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty else { return nil }
         let normalized = name.lowercased()
         switch capability {
-        case .wdr3:
-            return normalized.hasPrefix("wdr 3 ") ? name : nil
         case .concertzender:
             return ["concertzender", "concertzender oude muziek", "oude muziek"].contains(normalized) ? nil : name
         default:

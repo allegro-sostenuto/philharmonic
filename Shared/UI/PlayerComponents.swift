@@ -108,8 +108,9 @@ struct NowPlayingMetadata: View {
     @ScaledMetric(relativeTo: .title2) private var workSize = 25
     @ScaledMetric(relativeTo: .title3) private var movementSize = 20
     var body: some View {
+        let listing = item == nil && model.programmeName == nil ? model.liveListing : nil
         VStack(alignment: .leading, spacing: 8) {
-            if let item {
+            if let item = item ?? listing, listing?.programme == nil {
                 (item.work.isEmpty ? Text(station: model.selectedStation) : Text(item.work))
                     .font(.system(size: workSize, weight: .semibold)).tracking(-0.6)
                 if let movement = item.movement, !movement.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -123,12 +124,15 @@ struct NowPlayingMetadata: View {
                 }
             } else {
                 Text(station: model.selectedStation).font(.system(size: workSize, weight: .semibold))
-                if let programme = model.programmeName {
+                if let programme = model.programmeName ?? listing?.programme {
                     Text(programme).font(.subheadline).foregroundStyle(.secondary)
                 } else {
                     Text("Programme information is currently unavailable.")
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
+            }
+            if listing != nil {
+                Text("Broadcaster live listing").font(.caption).foregroundStyle(.secondary)
             }
         }
         .fixedSize(horizontal: false, vertical: true)

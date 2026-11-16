@@ -100,6 +100,32 @@ final class StationSwitchTests: XCTestCase {
         XCTAssertEqual(model.selectedAudioSource.bitrateKbps, 192)
     }
 
+    @MainActor func testBroadcasterListingWorksWithEverySavedQualityAndClearsOnPause() throws {
+        let (model, restore) = fixture(playing: false)
+        defer { restore() }
+        for station in StationCatalog.stations where station.metadataCapability.hasBroadcasterListing {
+            model.selectStation(station.id)
+            model.configureAudioRecoveryForTesting(playing: true)
+            let at = Date()
+            let item: ProgrammeItem
+            if station.metadataCapability == .wdr3 {
+                item = try XCTUnwrap(BroadcastMetadataParser.wdrRadioText(Data("Official radio text".utf8), receivedAt: at))
+            } else {
+                item = ProgrammeItem(id: station.id, start: at.addingTimeInterval(-60), end: at.addingTimeInterval(60),
+                                     work: "Official work", composer: "Official composer")
+            }
+            for source in station.audioSources {
+                model.setAudioSource(source.id, for: station.id)
+                model.setBroadcasterListingForTesting([item])
+                XCTAssertEqual(model.selectedAudioSource, source)
+                XCTAssertEqual(model.liveListing, item, "\(station.id) \(source.id)")
+                XCTAssertNil(model.currentItem)
+            }
+            model.pauseRemote()
+            XCTAssertNil(model.liveListing)
+        }
+    }
+
     @MainActor func testQualitySwitchPreservesSavedStationDuringSilentSchedulePreparation() {
         let (model, restore) = fixture(playing: false)
         defer { restore() }

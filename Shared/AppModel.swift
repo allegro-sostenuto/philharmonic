@@ -15,6 +15,7 @@ import Network
         }
     }
     @Published var currentItem: ProgrammeItem?
+    @Published private(set) var liveListing: ProgrammeItem?
     @Published var previousItems: [ProgrammeItem] = []
     @Published var upcomingItems: [ProgrammeItem] = []
     @Published var programmeName: String?
@@ -308,7 +309,7 @@ import Network
         reconnectStarted = nil; nextRetry = .distantPast
         acquisitionIsStale = false; bufferFailureMessage = nil; bufferWindow = nil
         pausedAt = nil; heardAt = Date(); metadataTimestamp = nil
-        timeline = PlaybackTimeline(); currentItem = nil; previousItems = []; upcomingItems = []
+        timeline = PlaybackTimeline(); currentItem = nil; liveListing = nil; previousItems = []; upcomingItems = []
         programmeName = nil; hostName = nil; artwork = nil; lastArtworkURL = nil
         lastArtworkAttempt = .distantPast; lastMetadataFetch = .distantPast
         selectedStation = station
@@ -853,6 +854,12 @@ import Network
     func resetMediaServicesForTesting() { handleMediaServicesReset() }
     func endAudioInterruptionForTesting(shouldResume: Bool) { endInterruption(shouldResume: shouldResume) }
 
+    func setBroadcasterListingForTesting(_ items: [ProgrammeItem]) {
+        precondition(isUIFixture && selectedStation.metadataCapability.hasBroadcasterListing)
+        timeline = PlaybackTimeline(items: items)
+        resolveMetadata()
+    }
+
     func finishAudioRecoveryForTesting() {
         interruptionActive = false
         wasPlayingBeforeInterruption = false
@@ -1050,7 +1057,7 @@ import Network
             state = snapshot.isSeeking ? .seeking : (snapshot.isReady ? .buffering : .connecting)
         }
         if let date = snapshot.metadataAt { metadataTimestamp = date }
-        if snapshot.metadataAt != nil || selectedStation.metadataCapability == .radioFrance {
+        if snapshot.metadataAt != nil || selectedStation.metadataCapability.hasBroadcasterListing {
             resolveMetadata()
         } else { refreshSystemSurfaces() }
     }
@@ -1095,7 +1102,8 @@ import Network
                 startConnection()
             }
         }
-        if hasStartedEngine, now.timeIntervalSince(lastMetadataFetch) >= StationConfiguration.metadataRefreshInterval { fetchMetadata() }
+        let metadataRefreshInterval = selectedStation.metadataCapability == .wdr3 ? 30 : StationConfiguration.metadataRefreshInterval
+        if hasStartedEngine, now.timeIntervalSince(lastMetadataFetch) >= metadataRefreshInterval { fetchMetadata() }
         evaluateSleep(now: now)
         evaluateSchedule()
         refreshHomeWidgets()
@@ -1843,9 +1851,7 @@ import Network
         #endif
         let capability = selectedStation.metadataCapability
         guard metadataTask == nil, !capability.usesStreamTitles else { return }
-        if capability == .radioFrance {
-            guard selectedAudioSource.format == .hls, engine.liveProgrammeDate != nil else { return }
-        }
+        if capability.hasBroadcasterListing, !hasStartedEngine || !wantsPlayback { return }
         lastMetadataFetch = Date()
         let generation = UUID(); metadataGeneration = generation
         let service = metadata
@@ -1859,14 +1865,14 @@ import Network
                     self.timeline.merge(items); self.resolveMetadata()
                 }
                 guard !Task.isCancelled, metadataGeneration == generation else { return }
-                if capability == .radioFrance { timeline = PlaybackTimeline(items: items) }
+                if capability.hasBroadcasterListing { timeline = PlaybackTimeline(items: items) }
                 else { timeline.merge(items) }
                 resolveMetadata()
                 self.recordDebugEvent(category: "metadata", name: "metadata_received", details: ["items": String(items.count)])
             } catch {
                 if !Task.isCancelled, metadataGeneration == generation {
                     recordDebugEvent(category: "metadata", name: "metadata_failed", details: ["error": PlaybackDiagnosticLog.sanitizedError(error)])
-                    if capability == .radioFrance { timeline = PlaybackTimeline(); resolveMetadata() }
+                    if capability.hasBroadcasterListing { timeline = PlaybackTimeline(); resolveMetadata() }
                 }
                 // Metadata failure never interrupts audio.
             }
@@ -1888,11 +1894,19 @@ import Network
     private func resolveMetadata() {
         let date = metadataTimestamp ?? (hasStartedEngine ? heardAt : Date())
         let capability = selectedStation.metadataCapability
+        let showsLiveListing = hasStartedEngine && wantsPlayback
+        var listing: ProgrammeItem?
         if capability == .radioFrance {
-            let item = selectedAudioSource.format == .hls ? engine.liveProgrammeDate.flatMap {
+            let broadcastDate = engine.liveProgrammeDate
+            let item = broadcastDate.flatMap {
                 BroadcastMetadataParser.radioFrancePiece(at: $0, in: timeline.items)
-            } : nil
+            }
             if currentItem != item { currentItem = item }
+            if showsLiveListing, broadcastDate == nil {
+                listing = BroadcastMetadataParser.radioFrancePiece(at: Date(), in: timeline.items)
+            }
+        } else if capability == .wdr3 {
+            if showsLiveListing { listing = timeline.item(at: Date()) }
         } else if !capability.usesStreamTitles {
             let context = timeline.context(at: date)
             if currentItem != context.current { currentItem = context.current }
@@ -1904,12 +1918,13 @@ import Network
             if previousItems != context.previous { previousItems = context.previous }
             if upcomingItems != context.upcoming { upcomingItems = context.upcoming }
         }
-        let presence = "\(selectedStation.id):\(currentItem?.work.isEmpty == false):\(currentItem?.composer.isEmpty == false):\(programmeName != nil)"
+        if liveListing != listing { liveListing = listing }
+        let presence = "\(selectedStation.id):\(currentItem?.work.isEmpty == false):\(currentItem?.composer.isEmpty == false):\(programmeName != nil):\(liveListing != nil)"
         if presence != debugMetadataPresence {
             debugMetadataPresence = presence
             recordDebugEvent(category: "metadata", name: "metadata_fields_changed", details: [
                 "has_work": String(currentItem?.work.isEmpty == false), "has_composer": String(currentItem?.composer.isEmpty == false),
-                "has_programme": String(programmeName != nil)])
+                "has_programme": String(programmeName != nil), "has_live_listing": String(liveListing != nil)])
         }
         let url = currentItem?.artworkURL
         if url != lastArtworkURL {

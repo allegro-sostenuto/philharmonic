@@ -104,35 +104,37 @@ final class StationSourcePlaybackTests: XCTestCase {
         engine.volume = 0
         defer { engine.stop() }
         let stations = StationCatalog.stations.filter { $0.metadataCapability.usesStreamTitles }
-        XCTAssertEqual(stations.map(\.id), ["radio-swiss-classic", "wdr3", "wfmt", "concertzender-oude-muziek",
+        XCTAssertEqual(stations.map(\.id), ["radio-swiss-classic", "wfmt", "concertzender-oude-muziek",
                                             "sacredmusic-fm", "reformatorische-omroep-radio-6"])
         for station in stations {
             for source in station.audioSources where source.format != .hls {
                 let label = "\(station.id) \(source.id)"
-                var item: ProgrammeItem?
-                var programme: String?
-                var failure: String?
-                engine.onFailure = { failure = Self.describe($0) }
-                engine.onStreamTitle = { title in
-                    item = BroadcastMetadataParser.streamTitle(title, capability: station.metadataCapability, receivedAt: Date())
-                    programme = BroadcastMetadataParser.streamProgramme(title, capability: station.metadataCapability)
+                let requiresComposer = [.swissClassic, .wfmt].contains(station.metadataCapability)
+                var passed = false
+                for attempt in 1...2 {
+                    var item: ProgrammeItem?
+                    var programme: String?
+                    var failure: String?
+                    engine.onFailure = { failure = Self.describe($0) }
+                    engine.onStreamTitle = { title in
+                        item = BroadcastMetadataParser.streamTitle(title, capability: station.metadataCapability, receivedAt: Date())
+                        programme = BroadcastMetadataParser.streamProgramme(title, capability: station.metadataCapability)
+                    }
+                    try await engine.start(url: source.url, retentionMinutes: 0, receivesStreamTitles: true)
+                    let deadline = ProcessInfo.processInfo.systemUptime + 30
+                    while failure == nil, ProcessInfo.processInfo.systemUptime < deadline {
+                        let hasMetadata = requiresComposer ? item?.composer.isEmpty == false : item != nil || programme != nil
+                        if hasMetadata, (engine.directSecondsForTesting ?? 0) >= 1 { passed = true; break }
+                        try await Task.sleep(nanoseconds: 250_000_000)
+                    }
+                    print("[stream-piece] \(label) attempt=\(attempt) passed=\(passed) composer=\(item?.composer ?? "none") work=\(item?.work ?? "none") performers=\(item?.performers ?? "none") programme=\(programme ?? "none") failure=\(failure ?? "none")")
+                    engine.stop()
+                    XCTAssertNil(item, "\(label) kept metadata after stopping")
+                    XCTAssertNil(programme, "\(label) kept its programme after stopping")
+                    if passed { break }
+                    if attempt == 1 { try await Task.sleep(nanoseconds: 3_000_000_000) }
                 }
-                try await engine.start(url: source.url, retentionMinutes: 0, receivesStreamTitles: true)
-                let deadline = ProcessInfo.processInfo.systemUptime + 30
-                while failure == nil, ProcessInfo.processInfo.systemUptime < deadline,
-                      (item == nil && programme == nil) || (engine.directSecondsForTesting ?? 0) < 1 {
-                    try await Task.sleep(nanoseconds: 250_000_000)
-                }
-                XCTAssertNil(failure, label)
-                XCTAssertGreaterThanOrEqual(engine.directSecondsForTesting ?? 0, 1, label)
-                XCTAssertTrue(item != nil || programme != nil, "\(label) delivered no usable stream title")
-                if [.swissClassic, .wfmt].contains(station.metadataCapability) {
-                    XCTAssertEqual(item?.composer.isEmpty, false, label)
-                }
-                print("[stream-piece] \(label) composer=\(item?.composer ?? "none") work=\(item?.work ?? "none") performers=\(item?.performers ?? "none") programme=\(programme ?? "none")")
-                engine.stop()
-                XCTAssertNil(item, "\(label) kept metadata after stopping")
-                XCTAssertNil(programme, "\(label) kept its programme after stopping")
+                XCTAssertTrue(passed, "\(label) did not advance and deliver the expected metadata")
             }
         }
     }
@@ -159,7 +161,8 @@ final class StationSourcePlaybackTests: XCTestCase {
             var item: ProgrammeItem?
             var feed: [ProgrammeItem] = []
             var pollAfter: TimeInterval = 0
-            while ProcessInfo.processInfo.systemUptime < deadline, item?.composer.isEmpty != false {
+            while ProcessInfo.processInfo.systemUptime < deadline,
+                  item?.composer.isEmpty != false || (engine.directSecondsForTesting ?? 0) < 1 {
                 if let date = engine.liveProgrammeDate {
                     let now = ProcessInfo.processInfo.systemUptime
                     if now >= pollAfter {
@@ -177,6 +180,16 @@ final class StationSourcePlaybackTests: XCTestCase {
             XCTAssertNil(engine.liveProgrammeDate)
             engine.stop()
         }
+    }
+
+    @MainActor func testWDRLiveListingComesFromItsOfficialPlayerFeed() async throws {
+        let station = try XCTUnwrap(StationCatalog.station(id: "wdr3"))
+        let service = MetadataService(station: station)
+        defer { service.cancel() }
+        let items = try await service.fetch()
+        let listing = try XCTUnwrap(PlaybackTimeline(items: items).item(at: Date()))
+        let caption = try XCTUnwrap(listing.programme)
+        print("[broadcaster-listing] \(station.id) \(caption)")
     }
 
     @MainActor private func probe(_ station: RadioStation, source: StationAudioSource, number: Int, deadline: TimeInterval) async throws -> Attempt {

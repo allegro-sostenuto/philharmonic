@@ -21,10 +21,12 @@ public enum StationMetadataCapability: String, Codable, Sendable {
 
     var usesStreamTitles: Bool {
         switch self {
-        case .swissClassic, .wfmt, .sacredMusic, .reformatorischeRadio6, .concertzender, .wdr3: return true
+        case .swissClassic, .wfmt, .sacredMusic, .reformatorischeRadio6, .concertzender: return true
         default: return false
         }
     }
+
+    var hasBroadcasterListing: Bool { self == .radioFrance || self == .wdr3 }
 }
 
 public struct RadioStation: Identifiable, Codable, Equatable, Sendable {
