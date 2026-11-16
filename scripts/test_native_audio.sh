@@ -67,8 +67,10 @@ fi
 if [ "${PHILHARMONIC_STREAM_METADATA_ONLY:-0}" = 1 ]; then
     tests=(
         -only-testing:PhilharmonicTests/BroadcastMetadataTests
+        -only-testing:PhilharmonicTests/StationCatalogTests
         -only-testing:PhilharmonicTests/StationSwitchTests
         -only-testing:PhilharmonicTests/StationSourcePlaybackTests/testLivePieceAndComposerThroughNativePlayer
+        -only-testing:PhilharmonicTests/StationSourcePlaybackTests/testRadioFranceMetadataUsesNativeBroadcastClock
     )
 fi
 if [ "${PHILHARMONIC_DEBUG_EVENTS_ONLY:-0}" = 1 ]; then

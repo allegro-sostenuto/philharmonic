@@ -41,7 +41,7 @@
     "timeZoneIdentifier": "Europe/Paris",
     "audioURL": "https://icecast.radiofrance.fr/francemusiqueeasyclassique-midfi.mp3",
     "audioFormat": "mp3",
-    "metadataCapability": "stationOnly"
+    "metadataCapability": "radioFrance"
   },
   {
     "id": "france-musique-la-baroque",
@@ -52,7 +52,7 @@
     "timeZoneIdentifier": "Europe/Paris",
     "audioURL": "https://icecast.radiofrance.fr/francemusiquebaroque-midfi.mp3",
     "audioFormat": "mp3",
-    "metadataCapability": "stationOnly"
+    "metadataCapability": "radioFrance"
   },
   {
     "id": "wdr3",
@@ -63,7 +63,7 @@
     "timeZoneIdentifier": "Europe/Berlin",
     "audioURL": "https://wdrhf.akamaized.net/hls/live/2027994/wdr3/96/seglist.m3u8",
     "audioFormat": "hls",
-    "metadataCapability": "stationOnly"
+    "metadataCapability": "wdr3"
   },
   {
     "id": "radio-chopin",
@@ -184,7 +184,7 @@
     "timeZoneIdentifier": "Europe/Amsterdam",
     "audioURL": "https://streams.greenhost.nl:8006/oudemuziek",
     "audioFormat": "mp3",
-    "metadataCapability": "stationOnly"
+    "metadataCapability": "concertzender"
   },
   {
     "id": "radio-esperance-chant-gregorien",
@@ -206,7 +206,7 @@
     "timeZoneIdentifier": "Europe/London",
     "audioURL": "https://streamer.radio.co/s56a86d18d/listen",
     "audioFormat": "mp3",
-    "metadataCapability": "stationOnly"
+    "metadataCapability": "sacredMusic"
   },
   {
     "id": "reformatorische-omroep-radio-6",
@@ -217,6 +217,6 @@
     "timeZoneIdentifier": "Europe/Amsterdam",
     "audioURL": "https://stream01.sthhost.nl:8006/live",
     "audioFormat": "mp3",
-    "metadataCapability": "stationOnly"
+    "metadataCapability": "reformatorischeRadio6"
   }
 ]

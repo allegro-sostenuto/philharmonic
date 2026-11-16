@@ -960,7 +960,7 @@ import Network
         debugConnectionWasRetry = reconnectStarted != nil
         recordDebugEvent(category: "connection", name: debugConnectionWasRetry ? "reconnect_started" : "stream_connection_started")
         let source = selectedAudioSource
-        let receivesStreamTitles = selectedStation.metadataCapability.usesStreamTitles
+        let receivesStreamTitles = selectedStation.metadataCapability.usesStreamTitles && source.format != .hls
         if scheduleOwnsPlayback && !preserveScheduledGain { scheduleReachedFullGain = false; scheduleEnvelope = nil; scheduleGain = 0; applyGain() }
         if reconnectStarted == nil { state = .connecting }
         hasStartedEngine = true
@@ -1049,8 +1049,10 @@ import Network
         } else if wantsPlayback && reconnectStarted == nil && (!scheduleOwnsPlayback || scheduleReachedFullGain) {
             state = snapshot.isSeeking ? .seeking : (snapshot.isReady ? .buffering : .connecting)
         }
-        if let date = snapshot.metadataAt { metadataTimestamp = date; resolveMetadata() }
-        else { refreshSystemSurfaces() }
+        if let date = snapshot.metadataAt { metadataTimestamp = date }
+        if snapshot.metadataAt != nil || selectedStation.metadataCapability == .radioFrance {
+            resolveMetadata()
+        } else { refreshSystemSurfaces() }
     }
 
     private func ensureTicker() {
@@ -1839,7 +1841,11 @@ import Network
         #if DEBUG
         guard !isUIFixture else { return }
         #endif
-        guard metadataTask == nil, !selectedStation.metadataCapability.usesStreamTitles else { return }
+        let capability = selectedStation.metadataCapability
+        guard metadataTask == nil, !capability.usesStreamTitles else { return }
+        if capability == .radioFrance {
+            guard selectedAudioSource.format == .hls, engine.liveProgrammeDate != nil else { return }
+        }
         lastMetadataFetch = Date()
         let generation = UUID(); metadataGeneration = generation
         let service = metadata
@@ -1853,13 +1859,16 @@ import Network
                     self.timeline.merge(items); self.resolveMetadata()
                 }
                 guard !Task.isCancelled, metadataGeneration == generation else { return }
-                timeline.merge(items); resolveMetadata()
+                if capability == .radioFrance { timeline = PlaybackTimeline(items: items) }
+                else { timeline.merge(items) }
+                resolveMetadata()
                 self.recordDebugEvent(category: "metadata", name: "metadata_received", details: ["items": String(items.count)])
             } catch {
                 if !Task.isCancelled, metadataGeneration == generation {
                     recordDebugEvent(category: "metadata", name: "metadata_failed", details: ["error": PlaybackDiagnosticLog.sanitizedError(error)])
+                    if capability == .radioFrance { timeline = PlaybackTimeline(); resolveMetadata() }
                 }
-                // Metadata failure never interrupts audio or clears the last known item.
+                // Metadata failure never interrupts audio.
             }
         }
     }
@@ -1868,31 +1877,40 @@ import Network
         let capability = selectedStation.metadataCapability
         guard capability.usesStreamTitles else { return }
         let item = BroadcastMetadataParser.streamTitle(title, capability: capability, receivedAt: Date())
+        let programme = BroadcastMetadataParser.streamProgramme(title, capability: capability)
         guard currentItem?.work != item?.work || currentItem?.composer != item?.composer ||
-              currentItem?.performers != item?.performers else { return }
+              currentItem?.performers != item?.performers || programmeName != programme else { return }
         currentItem = item
+        if programmeName != programme { programmeName = programme }
         resolveMetadata()
     }
 
     private func resolveMetadata() {
         let date = metadataTimestamp ?? (hasStartedEngine ? heardAt : Date())
-        let context = timeline.context(at: date)
-        if !selectedStation.metadataCapability.usesStreamTitles, currentItem != context.current {
-            currentItem = context.current
+        let capability = selectedStation.metadataCapability
+        if capability == .radioFrance {
+            let item = selectedAudioSource.format == .hls ? engine.liveProgrammeDate.flatMap {
+                BroadcastMetadataParser.radioFrancePiece(at: $0, in: timeline.items)
+            } : nil
+            if currentItem != item { currentItem = item }
+        } else if !capability.usesStreamTitles {
+            let context = timeline.context(at: date)
+            if currentItem != context.current { currentItem = context.current }
+            let programme = metadata.programme(at: date)
+            let name = programme?.name ?? currentItem?.programme
+            let host = programme?.host ?? currentItem?.host
+            if programmeName != name { programmeName = name }
+            if hostName != host { hostName = host }
+            if previousItems != context.previous { previousItems = context.previous }
+            if upcomingItems != context.upcoming { upcomingItems = context.upcoming }
         }
-        let presence = "\(selectedStation.id):\(currentItem?.work.isEmpty == false):\(currentItem?.composer.isEmpty == false)"
+        let presence = "\(selectedStation.id):\(currentItem?.work.isEmpty == false):\(currentItem?.composer.isEmpty == false):\(programmeName != nil)"
         if presence != debugMetadataPresence {
             debugMetadataPresence = presence
             recordDebugEvent(category: "metadata", name: "metadata_fields_changed", details: [
-                "has_work": String(currentItem?.work.isEmpty == false), "has_composer": String(currentItem?.composer.isEmpty == false)])
+                "has_work": String(currentItem?.work.isEmpty == false), "has_composer": String(currentItem?.composer.isEmpty == false),
+                "has_programme": String(programmeName != nil)])
         }
-        let programme = metadata.programme(at: date)
-        let name = programme?.name ?? currentItem?.programme
-        let host = programme?.host ?? currentItem?.host
-        if programmeName != name { programmeName = name }
-        if hostName != host { hostName = host }
-        if previousItems != context.previous { previousItems = context.previous }
-        if upcomingItems != context.upcoming { upcomingItems = context.upcoming }
         let url = currentItem?.artworkURL
         if url != lastArtworkURL {
             lastArtworkURL = url; artworkTask?.cancel(); artworkTask = nil; artwork = nil

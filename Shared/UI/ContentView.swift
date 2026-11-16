@@ -43,7 +43,7 @@ struct ContentView: View {
     private var hasProgrammeContent: Bool {
         switch model.selectedStation.metadataCapability {
         case .kusc, .hrt, .srP2: return true
-        case .stationOnly, .swissClassic, .wfmt: return false
+        default: return false
         }
     }
 

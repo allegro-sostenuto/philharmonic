@@ -123,8 +123,12 @@ struct NowPlayingMetadata: View {
                 }
             } else {
                 Text(station: model.selectedStation).font(.system(size: workSize, weight: .semibold))
-                Text("Programme information is currently unavailable.")
-                    .font(.subheadline).foregroundStyle(.secondary)
+                if let programme = model.programmeName {
+                    Text(programme).font(.subheadline).foregroundStyle(.secondary)
+                } else {
+                    Text("Programme information is currently unavailable.")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
             }
         }
         .fixedSize(horizontal: false, vertical: true)

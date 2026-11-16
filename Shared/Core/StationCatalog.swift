@@ -16,9 +16,15 @@ public struct StationAudioSource: Identifiable, Equatable, Sendable {
 
 /// Capabilities are explicit: an audio source does not imply a work or programme feed.
 public enum StationMetadataCapability: String, Codable, Sendable {
-    case kusc, stationOnly, hrt, srP2, swissClassic, wfmt
+    case kusc, stationOnly, hrt, srP2, swissClassic, wfmt, radioFrance
+    case sacredMusic, reformatorischeRadio6, concertzender, wdr3
 
-    var usesStreamTitles: Bool { self == .swissClassic || self == .wfmt }
+    var usesStreamTitles: Bool {
+        switch self {
+        case .swissClassic, .wfmt, .sacredMusic, .reformatorischeRadio6, .concertzender, .wdr3: return true
+        default: return false
+        }
+    }
 }
 
 public struct RadioStation: Identifiable, Codable, Equatable, Sendable {
@@ -35,6 +41,13 @@ public struct RadioStation: Identifiable, Codable, Equatable, Sendable {
     public var timeZone: TimeZone { TimeZone(identifier: timeZoneIdentifier) ?? TimeZone(secondsFromGMT: 0)! }
     public var isHLS: Bool { audioFormat == .hls }
     public var supportsProgrammes: Bool { metadataCapability == .kusc }
+    var radioFranceMetadataID: Int? {
+        switch id {
+        case "france-musique-classique-easy": return 401
+        case "france-musique-la-baroque": return 408
+        default: return nil
+        }
+    }
     public var countryCode: String? { StationCatalog.countryCodes[id] }
     public var flagAssetName: String? { countryCode.map { "flag-" + $0 } }
     public var defaultAudioSource: StationAudioSource {
@@ -80,8 +93,14 @@ public enum StationCatalog {
             .init(url: URL(string: "https://live1.sr.se/p2-aac-32")!, format: .aac, bitrateKbps: 32),
             .init(url: URL(string: "https://live1.sr.se/p2-aac-320")!, format: .aac, bitrateKbps: 320)
         ],
-        "france-musique-classique-easy": [.init(url: URL(string: "https://icecast.radiofrance.fr/francemusiqueeasyclassique-hifi.aac")!, format: .aac, bitrateKbps: 192)],
-        "france-musique-la-baroque": [.init(url: URL(string: "https://icecast.radiofrance.fr/francemusiquebaroque-hifi.aac")!, format: .aac, bitrateKbps: 192)],
+        "france-musique-classique-easy": [
+            .init(url: URL(string: "https://stream.radiofrance.fr/francemusiqueeasyclassique/francemusiqueeasyclassique_midfi.m3u8")!, format: .hls, bitrateKbps: 96),
+            .init(url: URL(string: "https://icecast.radiofrance.fr/francemusiqueeasyclassique-hifi.aac")!, format: .aac, bitrateKbps: 192)
+        ],
+        "france-musique-la-baroque": [
+            .init(url: URL(string: "https://stream.radiofrance.fr/francemusiquebaroque/francemusiquebaroque_midfi.m3u8")!, format: .hls, bitrateKbps: 96),
+            .init(url: URL(string: "https://icecast.radiofrance.fr/francemusiquebaroque-hifi.aac")!, format: .aac, bitrateKbps: 192)
+        ],
         "wdr3": [
             .init(url: URL(string: "https://wdrhf.akamaized.net/hls/live/2027994/wdr3/192/seglist.m3u8")!, format: .hls, bitrateKbps: 192),
             .init(url: URL(string: "https://wdr-wdr3-live.icecastssl.wdr.de/wdr/wdr3/live/mp3/128/stream.mp3")!, format: .mp3, bitrateKbps: 128),
@@ -119,17 +138,17 @@ public enum StationCatalog {
                      websiteURL: URL(string: "https://www.radiofrance.fr/francemusique")!, logoAssetName: "station-france-musique",
                      timeZoneIdentifier: "Europe/Paris",
                      audioURL: URL(string: "https://icecast.radiofrance.fr/francemusiqueeasyclassique-midfi.mp3")!,
-                     audioFormat: .mp3, metadataCapability: .stationOnly),
+                     audioFormat: .mp3, metadataCapability: .radioFrance),
         RadioStation(id: "france-musique-la-baroque", name: "France Musique · La Baroque", subtitle: nil,
                      websiteURL: URL(string: "https://www.radiofrance.fr/francemusique")!, logoAssetName: "station-france-musique",
                      timeZoneIdentifier: "Europe/Paris",
                      audioURL: URL(string: "https://icecast.radiofrance.fr/francemusiquebaroque-midfi.mp3")!,
-                     audioFormat: .mp3, metadataCapability: .stationOnly),
+                     audioFormat: .mp3, metadataCapability: .radioFrance),
         RadioStation(id: "wdr3", name: "WDR 3", subtitle: nil,
                      websiteURL: URL(string: "https://www1.wdr.de/radio/wdr3")!, logoAssetName: "station-wdr3",
                      timeZoneIdentifier: "Europe/Berlin",
                      audioURL: URL(string: "https://wdrhf.akamaized.net/hls/live/2027994/wdr3/96/seglist.m3u8")!,
-                     audioFormat: .hls, metadataCapability: .stationOnly),
+                     audioFormat: .hls, metadataCapability: .wdr3),
         RadioStation(id: "radio-chopin", name: "Polskie Radio Chopin", subtitle: nil,
                      websiteURL: URL(string: "https://chopin.polskieradio.pl")!, logoAssetName: "station-chopin",
                      timeZoneIdentifier: "Europe/Warsaw",
@@ -184,7 +203,7 @@ public enum StationCatalog {
                      websiteURL: URL(string: "https://www.concertzender.nl/ontvangst/list-of-streams/")!, logoAssetName: "station-cz-oude",
                      timeZoneIdentifier: "Europe/Amsterdam",
                      audioURL: URL(string: "https://streams.greenhost.nl:8006/oudemuziek")!,
-                     audioFormat: .mp3, metadataCapability: .stationOnly),
+                     audioFormat: .mp3, metadataCapability: .concertzender),
         RadioStation(id: "radio-esperance-chant-gregorien", name: "Radio Espérance – Chant Grégorien", subtitle: "Gregorian Chant",
                      websiteURL: URL(string: "https://radio-esperance.fr/chant-gregorien/programme/")!, logoAssetName: "station-esperance-gregorien",
                      timeZoneIdentifier: "Europe/Paris",
@@ -194,12 +213,12 @@ public enum StationCatalog {
                      websiteURL: URL(string: "https://www.sacredmusic.fm/")!, logoAssetName: "station-sacredmusic-fm",
                      timeZoneIdentifier: "Europe/London",
                      audioURL: URL(string: "https://streamer.radio.co/s56a86d18d/listen")!,
-                     audioFormat: .mp3, metadataCapability: .stationOnly),
+                     audioFormat: .mp3, metadataCapability: .sacredMusic),
         RadioStation(id: "reformatorische-omroep-radio-6", name: "Reformatorische Omroep Radio 6 – Psalms and Hymns", subtitle: "Reformed Broadcasting",
                      websiteURL: URL(string: "https://reformatorischeomroep.nl/nieuws/uniek-genre-op-nieuw-ro-kanaal")!, logoAssetName: "station-reformatorische-omroep-6",
                      timeZoneIdentifier: "Europe/Amsterdam",
                      audioURL: URL(string: "https://stream01.sthhost.nl:8006/live")!,
-                     audioFormat: .mp3, metadataCapability: .stationOnly)
+                     audioFormat: .mp3, metadataCapability: .reformatorischeRadio6)
     ]
 
     public static let defaultStation = stations[0]

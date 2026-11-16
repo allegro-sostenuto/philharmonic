@@ -71,6 +71,58 @@ final class BroadcastMetadataTests: XCTestCase {
         XCTAssertNil(BroadcastMetadataParser.streamTitle(" - Work - Performer - Album - Label", capability: .wfmt, receivedAt: at))
     }
 
+    func testSacredTrackCreditsKeepPerformersAndReportedTitleDistinct() throws {
+        let at = Date(timeIntervalSince1970: 100)
+        let sacred = try XCTUnwrap(BroadcastMetadataParser.streamTitle(
+            "Schola Polyphonica - Ego sum pastor bonus", capability: .sacredMusic, receivedAt: at))
+        XCTAssertEqual(sacred.work, "Ego sum pastor bonus")
+        XCTAssertEqual(sacred.performers, "Schola Polyphonica")
+        XCTAssertTrue(sacred.composer.isEmpty)
+        let radio6 = try XCTUnwrap(BroadcastMetadataParser.streamTitle(
+            "Out in the windy West (C.V. Stanford)  -  Spiritus Chamber Choir directed by Aidan Oliver",
+            capability: .reformatorischeRadio6, receivedAt: at))
+        XCTAssertEqual(radio6.work, "Out in the windy West (C.V. Stanford)")
+        XCTAssertTrue(radio6.composer.isEmpty)
+        XCTAssertEqual(radio6.performers, "Spiritus Chamber Choir directed by Aidan Oliver")
+        XCTAssertNil(BroadcastMetadataParser.streamTitle("RO-6", capability: .reformatorischeRadio6, receivedAt: at))
+        XCTAssertNil(BroadcastMetadataParser.streamTitle("Announcer - Show - Station", capability: .sacredMusic, receivedAt: at))
+    }
+
+    func testProgrammeStreamTitlesAreSeparateFromPieces() {
+        let wdr = "WDR 3 Mosaik mit Daniel Finkernagel"
+        let oudeMuziek = "Zwerven door de Middeleeuwen (za 1 aug 2020 10:00)"
+        XCTAssertEqual(BroadcastMetadataParser.streamProgramme(wdr, capability: .wdr3), wdr)
+        XCTAssertEqual(BroadcastMetadataParser.streamProgramme(oudeMuziek, capability: .concertzender), oudeMuziek)
+        XCTAssertNil(BroadcastMetadataParser.streamProgramme("WDR 3", capability: .wdr3))
+        XCTAssertNil(BroadcastMetadataParser.streamProgramme("Concertzender Oude Muziek", capability: .concertzender))
+        XCTAssertNil(BroadcastMetadataParser.streamTitle(wdr, capability: .wdr3, receivedAt: Date()))
+    }
+
+    func testRadioFranceUsesItsOwnTimedSongAndExplicitComposerFields() throws {
+        let response = Data(#"""
+        {"stationId":401,"steps":{
+          "work":{"stationId":401,"embedType":"song","start":100,"end":208,"title":"Mazurka","composers":"Pauline Viardot","authors":"A pianist"},
+          "next":{"stationId":401,"embedType":"song","start":203,"end":300,"title":"Sonate","authors":"A second pianist"},
+          "wrong":{"stationId":408,"embedType":"song","start":100,"end":300,"title":"Different channel","composers":"Wrong"},
+          "show":{"stationId":401,"embedType":"diffusion","start":301,"end":350,"title":"A programme"},
+          "bad":{"stationId":401,"embedType":"song","start":390,"end":380,"title":"Bad time"}
+        }}
+        """#.utf8)
+        let items = try BroadcastMetadataParser.radioFrance(response, stationID: 401)
+        XCTAssertThrowsError(try BroadcastMetadataParser.radioFrance(response, stationID: 408))
+        XCTAssertEqual(items.count, 2)
+        let inside = BroadcastMetadataParser.radioFrancePiece(at: Date(timeIntervalSince1970: 130), in: items)
+        XCTAssertEqual(inside?.work, "Mazurka")
+        XCTAssertEqual(inside?.composer, "Pauline Viardot")
+        let next = BroadcastMetadataParser.radioFrancePiece(at: Date(timeIntervalSince1970: 240), in: items)
+        XCTAssertEqual(next?.work, "Sonate")
+        XCTAssertEqual(next?.composer, "")
+        let unavailableTimes: [TimeInterval] = [104, 205, 208, 299, 325]
+        for time in unavailableTimes {
+            XCTAssertNil(BroadcastMetadataParser.radioFrancePiece(at: Date(timeIntervalSince1970: time), in: items))
+        }
+    }
+
     func testScheduledStationMigratesAndSurvivesRoundTrip() throws {
         let request = ScheduledStartRequest(date: Date(timeIntervalSince1970: 1234), stationID: "hr-klasik")
         let data = try JSONEncoder().encode(request)

@@ -30,12 +30,13 @@ final class StationCatalogTests: XCTestCase {
         let p2 = try XCTUnwrap(StationCatalog.station(id: "sr-p2"))
         XCTAssertEqual(p2.audioSources.map(\.id), ["aac-32", "aac-128", "aac-320"])
         let france = try XCTUnwrap(StationCatalog.station(id: "france-musique-la-baroque"))
-        XCTAssertEqual(france.audioSources.map(\.id), ["mp3-128", "aac-192"])
+        XCTAssertEqual(france.audioSources.map(\.id), ["hls-96", "mp3-128", "aac-192"])
+        XCTAssertEqual(france.defaultAudioSource.id, "mp3-128")
         let wdr = try XCTUnwrap(StationCatalog.station(id: "wdr3"))
         XCTAssertEqual(wdr.audioSources.map(\.id), ["hls-96", "mp3-128", "hls-192", "mp3-256"])
         XCTAssertEqual(Set(StationCatalog.stations.flatMap { station in
             station.audioSources.map(\.url)
-        }).count, 34)
+        }).count, 36)
         for station in StationCatalog.stations {
             XCTAssertEqual(Set(station.audioSources.map(\.id)).count, station.audioSources.count)
             XCTAssertTrue(station.audioSources.contains(station.defaultAudioSource))

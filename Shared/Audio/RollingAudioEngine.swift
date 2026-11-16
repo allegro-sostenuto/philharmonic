@@ -61,6 +61,11 @@ final class RollingAudioEngine: NSObject {
     let transportClock = PlaybackTransportClock()
     let diagnostics = PlaybackDiagnostics()
 
+    var liveProgrammeDate: Date? {
+        guard shouldPlay, !failed, !transportIsSeeking, transportIsPlaying else { return nil }
+        return player?.currentItem?.currentDate()
+    }
+
     var volume: Float {
         get { outputVolume }
         set {
