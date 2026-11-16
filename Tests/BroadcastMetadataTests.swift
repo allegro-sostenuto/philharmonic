@@ -85,6 +85,7 @@ final class BroadcastMetadataTests: XCTestCase {
         XCTAssertTrue(radio6.composer.isEmpty)
         XCTAssertEqual(radio6.performers, "Spiritus Chamber Choir directed by Aidan Oliver")
         XCTAssertNil(BroadcastMetadataParser.streamTitle("RO-6", capability: .reformatorischeRadio6, receivedAt: at))
+        XCTAssertNil(BroadcastMetadataParser.streamTitle("Alpha ", capability: .reformatorischeRadio6, receivedAt: at))
         XCTAssertNil(BroadcastMetadataParser.streamTitle("Announcer - Show - Station", capability: .sacredMusic, receivedAt: at))
     }
 
@@ -92,6 +93,7 @@ final class BroadcastMetadataTests: XCTestCase {
         let oudeMuziek = "Zwerven door de Middeleeuwen (za 1 aug 2020 10:00)"
         XCTAssertEqual(BroadcastMetadataParser.streamProgramme(oudeMuziek, capability: .concertzender), oudeMuziek)
         XCTAssertNil(BroadcastMetadataParser.streamProgramme("Concertzender Oude Muziek", capability: .concertzender))
+        XCTAssertNil(BroadcastMetadataParser.streamProgramme("L", capability: .concertzender))
         XCTAssertNil(BroadcastMetadataParser.streamTitle(oudeMuziek, capability: .concertzender, receivedAt: Date()))
     }
 
@@ -107,7 +109,10 @@ final class BroadcastMetadataTests: XCTestCase {
         XCTAssertNil(history.item(at: at.addingTimeInterval(45)))
         let latin = Data([0x4A, 0xF6, 0x72, 0x67])
         XCTAssertEqual(BroadcastMetadataParser.wdrRadioText(latin, receivedAt: at)?.programme, "Jörg")
+        let padded = Data("WDR 3 Klassik Forum\u{0000}\u{0000}".utf8)
+        XCTAssertEqual(BroadcastMetadataParser.wdrRadioText(padded, receivedAt: at)?.programme, "WDR 3 Klassik Forum")
         XCTAssertNil(BroadcastMetadataParser.wdrRadioText(Data("WDR 3".utf8), receivedAt: at))
+        XCTAssertNil(BroadcastMetadataParser.wdrRadioText(Data("WDR 3 - Das Kulturradio.".utf8), receivedAt: at))
         XCTAssertNil(BroadcastMetadataParser.wdrRadioText(Data("<html>Unavailable</html>".utf8), receivedAt: at))
     }
 

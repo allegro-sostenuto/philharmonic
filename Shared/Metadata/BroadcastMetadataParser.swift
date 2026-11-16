@@ -12,9 +12,11 @@ enum BroadcastMetadataParser {
 
     static func wdrRadioText(_ data: Data, receivedAt: Date) -> ProgrammeItem? {
         let decoded = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1)
-        guard let text = decoded?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty,
-              text.count <= 1024, !text.hasPrefix("<"), text.rangeOfCharacter(from: .controlCharacters) == nil,
-              text.caseInsensitiveCompare("WDR 3") != .orderedSame else { return nil }
+        let padding = CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: "\u{0000}"))
+        guard let text = decoded?.trimmingCharacters(in: padding), !text.isEmpty,
+              text.count <= 1024, !text.hasPrefix("<"), text.rangeOfCharacter(from: .controlCharacters) == nil else { return nil }
+        let normalized = text.lowercased().trimmingCharacters(in: .punctuationCharacters)
+        guard !["wdr 3", "wdr 3 - das kulturradio", "wdr 3 – das kulturradio"].contains(normalized) else { return nil }
         // The publisher alternates between track credits and programme captions.
         return ProgrammeItem(id: "wdr3-radio-text", start: receivedAt, end: receivedAt.addingTimeInterval(45),
                              work: "", programme: text)
@@ -93,7 +95,8 @@ enum BroadcastMetadataParser {
     }
 
     static func streamProgramme(_ title: String?, capability: StationMetadataCapability) -> String? {
-        guard let name = title?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty else { return nil }
+        guard let name = title?.trimmingCharacters(in: .whitespacesAndNewlines), name.count >= 4,
+              name.rangeOfCharacter(from: .controlCharacters) == nil else { return nil }
         let normalized = name.lowercased()
         switch capability {
         case .concertzender:
