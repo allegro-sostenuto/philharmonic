@@ -53,10 +53,11 @@ struct EngineSnapshot {
 /// playback coordinator. This class owns exactly one audio player and one audio
 /// acquisition path. A new generation invalidates every callback from its predecessor.
 @MainActor
-final class RollingAudioEngine {
+final class RollingAudioEngine: NSObject {
     var onUpdate: ((EngineSnapshot) -> Void)?
     var onFailure: ((Error) -> Void)?
     var onMediaProgress: (() -> Void)?
+    var onStreamTitle: ((String?) -> Void)?
     let transportClock = PlaybackTransportClock()
     let diagnostics = PlaybackDiagnostics()
 
@@ -100,6 +101,8 @@ final class RollingAudioEngine {
     private var cursor = ConfirmedPlaybackCursor()
     private var directMetadataClock = DirectMetadataClock()
     private weak var metadataPlayerItem: AVPlayerItem?
+    private var receivesStreamTitles = false
+    private var streamTitleTask: Task<Void, Never>?
     private var liveClock = LivePlaybackClock()
     private var advertisedEdge: Date?
     private var lastAcquisitionUptime: TimeInterval?
@@ -130,6 +133,7 @@ final class RollingAudioEngine {
         return try await HLSIngestor().resolveForDirectPlayback(url: url)
     }) {
         self.prepareDirectStream = prepareDirectStream
+        super.init()
         // A process never restores buffered playback after termination.
         try? FileManager.default.removeItem(at: Self.bufferDirectory)
     }
@@ -186,9 +190,11 @@ final class RollingAudioEngine {
         return 0
     }
 
-    func start(url: URL, retentionMinutes: Int, playbackRequested: Bool = true) async throws {
+    func start(url: URL, retentionMinutes: Int, playbackRequested: Bool = true,
+               receivesStreamTitles: Bool = false) async throws {
         try Task.checkCancellation()
         stopInternal(publish: false)
+        self.receivesStreamTitles = receivesStreamTitles
         sourceURL = url
         self.retentionMinutes = supportedRetention(retentionMinutes)
         shouldPlay = playbackRequested
@@ -422,6 +428,11 @@ final class RollingAudioEngine {
         let asset = AVURLAsset(url: url, options: [AVURLAssetHTTPUserAgentKey: StationConfiguration.streamUserAgent])
         let item = AVPlayerItem(asset: asset)
         item.canUseNetworkResourcesForLiveStreamingWhilePaused = false
+        if receivesStreamTitles {
+            let output = AVPlayerItemMetadataOutput(identifiers: [AVMetadataIdentifier.icyMetadataStreamTitle.rawValue])
+            output.setDelegate(self, queue: .main)
+            item.add(output)
+        }
         return item
     }
 
@@ -537,6 +548,7 @@ final class RollingAudioEngine {
         if metadataPlayerItem !== item {
             metadataPlayerItem = item
             directMetadataClock = DirectMetadataClock()
+            clearStreamTitle()
         }
         let activeGeneration = generation
         itemObservation = item.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
@@ -551,6 +563,17 @@ final class RollingAudioEngine {
                 }
             }
         }
+    }
+
+    private func clearStreamTitle() {
+        guard receivesStreamTitles else { return }
+        streamTitleTask?.cancel()
+        streamTitleTask = nil
+        onStreamTitle?(nil)
+    }
+
+    private func acceptsStreamTitle(from output: AVPlayerItemMetadataOutput) -> Bool {
+        shouldPlay && !failed && player?.currentItem?.outputs.contains { $0 === output } == true
     }
 
     private func accept(_ segment: AudioSegment) {
@@ -800,6 +823,7 @@ final class RollingAudioEngine {
         invalidatePendingSeek()
         player?.pause()
         bufferedPlayer?.pause()
+        clearStreamTitle()
         publish()
         onFailure?(error)
     }
@@ -847,6 +871,27 @@ final class RollingAudioEngine {
         failed = false
         if let runDirectory { try? FileManager.default.removeItem(at: runDirectory) }
         runDirectory = nil
+        clearStreamTitle()
+        receivesStreamTitles = false
         if shouldPublish { publish() }
+    }
+}
+
+extension RollingAudioEngine: AVPlayerItemMetadataOutputPushDelegate {
+    nonisolated func metadataOutput(_ output: AVPlayerItemMetadataOutput,
+                                    didOutputTimedMetadataGroups groups: [AVTimedMetadataGroup],
+                                    from track: AVPlayerItemTrack?) {
+        // The output's delegate queue is the main queue.
+        MainActor.assumeIsolated {
+            guard acceptsStreamTitle(from: output), let group = groups.last else { return }
+            let item = group.items.last
+            streamTitleTask?.cancel()
+            streamTitleTask = Task { [weak self] in
+                let title: String?
+                if let item { title = try? await item.load(.stringValue) } else { title = nil }
+                guard let self, !Task.isCancelled, acceptsStreamTitle(from: output) else { return }
+                onStreamTitle?(title)
+            }
+        }
     }
 }

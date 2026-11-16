@@ -92,6 +92,44 @@ final class StationSourcePlaybackTests: XCTestCase {
         }
     }
 
+    @MainActor func testLivePieceAndComposerThroughNativePlayer() async throws {
+        #if !targetEnvironment(simulator)
+        throw XCTSkip("Source probes run only on an explicitly created disposable simulator.")
+        #endif
+        let audio = AVAudioSession.sharedInstance()
+        try audio.setCategory(.playback, mode: .default)
+        try audio.setActive(true)
+        defer { try? audio.setActive(false, options: .notifyOthersOnDeactivation) }
+        let engine = RollingAudioEngine()
+        engine.volume = 0
+        defer { engine.stop() }
+        let stations = StationCatalog.stations.filter { $0.metadataCapability.usesStreamTitles }
+        XCTAssertEqual(stations.map(\.id), ["radio-swiss-classic", "wfmt"])
+        for station in stations {
+            for source in station.audioSources {
+                let label = "\(station.id) \(source.id)"
+                var item: ProgrammeItem?
+                var failure: String?
+                engine.onFailure = { failure = Self.describe($0) }
+                engine.onStreamTitle = { title in
+                    item = BroadcastMetadataParser.streamTitle(title, capability: station.metadataCapability, receivedAt: Date())
+                }
+                try await engine.start(url: source.url, retentionMinutes: 0, receivesStreamTitles: true)
+                let deadline = ProcessInfo.processInfo.systemUptime + 30
+                while failure == nil, ProcessInfo.processInfo.systemUptime < deadline,
+                      item == nil || (engine.directSecondsForTesting ?? 0) < 1 {
+                    try await Task.sleep(nanoseconds: 250_000_000)
+                }
+                XCTAssertNil(failure, label)
+                XCTAssertGreaterThanOrEqual(engine.directSecondsForTesting ?? 0, 1, label)
+                XCTAssertNotNil(item, "\(label) delivered no usable stream title")
+                print("[stream-piece] \(label) composer=\(item?.composer ?? "none") work=\(item?.work ?? "none")")
+                engine.stop()
+                XCTAssertNil(item, "\(label) kept metadata after stopping")
+            }
+        }
+    }
+
     @MainActor private func probe(_ station: RadioStation, source: StationAudioSource, number: Int, deadline: TimeInterval) async throws -> Attempt {
         let engine = RollingAudioEngine()
         engine.volume = 0 // Decoder readiness is tested without audible output.

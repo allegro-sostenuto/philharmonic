@@ -19,7 +19,7 @@
     "timeZoneIdentifier": "Europe/Zurich",
     "audioURL": "https://stream.srg-ssr.ch/srgssr/rsc_de/aac/96",
     "audioFormat": "aac",
-    "metadataCapability": "stationOnly"
+    "metadataCapability": "swissClassic"
   },
   {
     "id": "sr-p2",
@@ -151,7 +151,7 @@
     "timeZoneIdentifier": "America/Chicago",
     "audioURL": "https://wfmt.streamguys1.com/main",
     "audioFormat": "aac",
-    "metadataCapability": "stationOnly"
+    "metadataCapability": "wfmt"
   },
   {
     "id": "romania-muzical",

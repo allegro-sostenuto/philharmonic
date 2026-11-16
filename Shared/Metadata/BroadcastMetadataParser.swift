@@ -9,6 +9,31 @@ enum BroadcastMetadataParser {
     static let hrtURL = URL(string: "https://np.tritondigital.com/public/nowplaying?mountName=HR_CLASSICS&numberToFetch=10&eventType=track")!
     static let srP2URL = URL(string: "https://api.sr.se/api/v2/playlists/rightnow?channelid=2562&format=json")!
 
+    static func streamTitle(_ title: String?, capability: StationMetadataCapability, receivedAt: Date) -> ProgrammeItem? {
+        guard let title else { return nil }
+        let fields = title.components(separatedBy: " - ").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        let work: String
+        let performers: String
+        switch capability {
+        case .swissClassic:
+            guard fields.count >= 2, fields[0].caseInsensitiveCompare("Radio Swiss Classic") != .orderedSame else { return nil }
+            work = fields.dropFirst().joined(separator: " - ")
+            performers = ""
+        case .wfmt:
+            // Composer, work, performers, album and label. A show title or
+            // an ambiguous delimiter cannot identify a composer and a work.
+            guard fields.count == 5, fields[0].caseInsensitiveCompare("WFMT") != .orderedSame else { return nil }
+            work = fields[1]
+            performers = fields[2]
+        default:
+            return nil
+        }
+        let composer = fields[0]
+        guard !composer.isEmpty, !work.isEmpty else { return nil }
+        return ProgrammeItem(id: "\(capability.rawValue)-\(receivedAt.timeIntervalSince1970)", start: receivedAt,
+                             work: work, composer: composer, performers: performers)
+    }
+
     static func srP2(_ data: Data) throws -> [ProgrammeItem] {
         let response = try JSONDecoder().decode(SRResponse.self, from: data)
         guard response.playlist.channel.id == 2562 else { return [] }

@@ -16,7 +16,9 @@ public struct StationAudioSource: Identifiable, Equatable, Sendable {
 
 /// Capabilities are explicit: an audio source does not imply a work or programme feed.
 public enum StationMetadataCapability: String, Codable, Sendable {
-    case kusc, stationOnly, hrt, srP2
+    case kusc, stationOnly, hrt, srP2, swissClassic, wfmt
+
+    var usesStreamTitles: Bool { self == .swissClassic || self == .wfmt }
 }
 
 public struct RadioStation: Identifiable, Codable, Equatable, Sendable {
@@ -107,7 +109,7 @@ public enum StationCatalog {
                      websiteURL: URL(string: "https://www.radioswissclassic.ch")!, logoAssetName: "station-swiss",
                      timeZoneIdentifier: "Europe/Zurich",
                      audioURL: URL(string: "https://stream.srg-ssr.ch/srgssr/rsc_de/aac/96")!,
-                     audioFormat: .aac, metadataCapability: .stationOnly),
+                     audioFormat: .aac, metadataCapability: .swissClassic),
         RadioStation(id: "sr-p2", name: "Sveriges Radio P2", subtitle: "P2 Musik",
                      websiteURL: URL(string: "https://www.sverigesradio.se/kanaler/p2")!, logoAssetName: "station-p2",
                      timeZoneIdentifier: "Europe/Stockholm",
@@ -167,7 +169,7 @@ public enum StationCatalog {
                      websiteURL: URL(string: "https://www.wfmt.com/")!, logoAssetName: "station-wfmt",
                      timeZoneIdentifier: "America/Chicago",
                      audioURL: URL(string: "https://wfmt.streamguys1.com/main")!,
-                     audioFormat: .aac, metadataCapability: .stationOnly),
+                     audioFormat: .aac, metadataCapability: .wfmt),
         RadioStation(id: "romania-muzical", name: "Radio România Muzical", subtitle: nil,
                      websiteURL: URL(string: "https://www.romania-muzical.ro/")!, logoAssetName: "station-romania-muzical",
                      timeZoneIdentifier: "Europe/Bucharest",

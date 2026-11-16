@@ -207,6 +207,7 @@ import Network
         engine.onUpdate = { [weak self] snapshot in self?.receive(snapshot) }
         engine.onFailure = { [weak self] error in self?.connectionFailed(error) }
         engine.onMediaProgress = { [weak self] in self?.recordConfirmedMediaProgress() }
+        engine.onStreamTitle = { [weak self] title in self?.receiveStreamTitle(title) }
         installAudioObservers()
         debugNetworkMonitor.pathUpdateHandler = { [weak self] path in
             let details = ["system_path_status": String(describing: path.status),
@@ -959,6 +960,7 @@ import Network
         debugConnectionWasRetry = reconnectStarted != nil
         recordDebugEvent(category: "connection", name: debugConnectionWasRetry ? "reconnect_started" : "stream_connection_started")
         let source = selectedAudioSource
+        let receivesStreamTitles = selectedStation.metadataCapability.usesStreamTitles
         if scheduleOwnsPlayback && !preserveScheduledGain { scheduleReachedFullGain = false; scheduleEnvelope = nil; scheduleGain = 0; applyGain() }
         if reconnectStarted == nil { state = .connecting }
         hasStartedEngine = true
@@ -971,7 +973,7 @@ import Network
         connectionTask = Task { [weak self] in
             guard let self, !Task.isCancelled else { return }
             do {
-                try await engine.start(url: source.url, retentionMinutes: 0)
+                try await engine.start(url: source.url, retentionMinutes: 0, receivesStreamTitles: receivesStreamTitles)
                 guard !Task.isCancelled, connectionGeneration == generation else {
                     recordDebugEvent(category: "connection", name: "stale_connection_callback_ignored", generation: generation.uuidString)
                     return
@@ -1837,7 +1839,7 @@ import Network
         #if DEBUG
         guard !isUIFixture else { return }
         #endif
-        guard metadataTask == nil else { return }
+        guard metadataTask == nil, !selectedStation.metadataCapability.usesStreamTitles else { return }
         lastMetadataFetch = Date()
         let generation = UUID(); metadataGeneration = generation
         let service = metadata
@@ -1861,10 +1863,23 @@ import Network
             }
         }
     }
+
+    private func receiveStreamTitle(_ title: String?) {
+        let capability = selectedStation.metadataCapability
+        guard capability.usesStreamTitles else { return }
+        let item = BroadcastMetadataParser.streamTitle(title, capability: capability, receivedAt: Date())
+        guard currentItem?.work != item?.work || currentItem?.composer != item?.composer ||
+              currentItem?.performers != item?.performers else { return }
+        currentItem = item
+        resolveMetadata()
+    }
+
     private func resolveMetadata() {
         let date = metadataTimestamp ?? (hasStartedEngine ? heardAt : Date())
         let context = timeline.context(at: date)
-        if currentItem != context.current { currentItem = context.current }
+        if !selectedStation.metadataCapability.usesStreamTitles, currentItem != context.current {
+            currentItem = context.current
+        }
         let presence = "\(selectedStation.id):\(currentItem?.work.isEmpty == false):\(currentItem?.composer.isEmpty == false)"
         if presence != debugMetadataPresence {
             debugMetadataPresence = presence

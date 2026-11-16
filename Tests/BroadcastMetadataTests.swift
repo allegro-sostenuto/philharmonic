@@ -39,6 +39,38 @@ final class BroadcastMetadataTests: XCTestCase {
         XCTAssertThrowsError(try BroadcastMetadataParser.srP2(Data("{}".utf8)))
     }
 
+    func testSwissClassicStreamTitleSeparatesComposerAndWork() throws {
+        let at = Date(timeIntervalSince1970: 100)
+        let item = try XCTUnwrap(BroadcastMetadataParser.streamTitle(
+            "Carl Reinecke - Allegro molto moderato aus dem Flötenkonzert D-Dur op. 283", capability: .swissClassic, receivedAt: at))
+        XCTAssertEqual(item.composer, "Carl Reinecke")
+        XCTAssertEqual(item.work, "Allegro molto moderato aus dem Flötenkonzert D-Dur op. 283")
+        XCTAssertEqual(item.start, at)
+        XCTAssertNil(item.end)
+        XCTAssertFalse(item.timingReliable)
+        let movement = BroadcastMetadataParser.streamTitle("Composer - Work - Movement", capability: .swissClassic, receivedAt: at)
+        XCTAssertEqual(movement?.work, "Work - Movement")
+    }
+
+    func testWFMTStreamTitleUsesComposerAndWorkFields() throws {
+        let item = try XCTUnwrap(BroadcastMetadataParser.streamTitle(
+            "Bon, Anna - Clavier Sonata #4 in C - Barbara Harbach, hc - Anna Bon - MSR Classics",
+            capability: .wfmt, receivedAt: Date(timeIntervalSince1970: 100)))
+        XCTAssertEqual(item.composer, "Bon, Anna")
+        XCTAssertEqual(item.work, "Clavier Sonata #4 in C")
+        XCTAssertEqual(item.performers, "Barbara Harbach, hc")
+        XCTAssertNil(item.artworkURL)
+    }
+
+    func testMissingFieldsAndStationAnnouncementsDoNotProduceMusic() {
+        let at = Date(timeIntervalSince1970: 100)
+        XCTAssertNil(BroadcastMetadataParser.streamTitle(nil, capability: .swissClassic, receivedAt: at))
+        XCTAssertNil(BroadcastMetadataParser.streamTitle("Composer - ", capability: .swissClassic, receivedAt: at))
+        XCTAssertNil(BroadcastMetadataParser.streamTitle("Radio Swiss Classic - Live", capability: .swissClassic, receivedAt: at))
+        XCTAssertNil(BroadcastMetadataParser.streamTitle("WFMT - Midday Music", capability: .wfmt, receivedAt: at))
+        XCTAssertNil(BroadcastMetadataParser.streamTitle(" - Work - Performer - Album - Label", capability: .wfmt, receivedAt: at))
+    }
+
     func testScheduledStationMigratesAndSurvivesRoundTrip() throws {
         let request = ScheduledStartRequest(date: Date(timeIntervalSince1970: 1234), stationID: "hr-klasik")
         let data = try JSONEncoder().encode(request)

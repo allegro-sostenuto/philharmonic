@@ -47,11 +47,11 @@ tests=(
     -only-testing:PhilharmonicTests/ScheduledSpeakerCategoryTests
     -only-testing:PhilharmonicTests/SpeakerVolumeSetupTests
     -only-testing:PhilharmonicTests/StationSwitchTests
-    -only-testing:PhilharmonicTests/StationSourcePlaybackTests
+    -only-testing:PhilharmonicTests/StationSourcePlaybackTests/testApprovedSourcesBecomeReadyAndAdvanceThroughNativePlayer
 )
 if [ "${PHILHARMONIC_STATION_SOURCES_ONLY:-0}" = 1 ]; then
     tests=(
-        -only-testing:PhilharmonicTests/StationSourcePlaybackTests
+        -only-testing:PhilharmonicTests/StationSourcePlaybackTests/testApprovedSourcesBecomeReadyAndAdvanceThroughNativePlayer
         -only-testing:PhilharmonicTests/StationCatalogTests
         -only-testing:PhilharmonicTests/StationGeographyTests
         -only-testing:PhilharmonicTests/LiveOnlySettingsTests
@@ -62,6 +62,13 @@ if [ "${PHILHARMONIC_STATION_BOUNDARIES_ONLY:-0}" = 1 ]; then
     tests=(
         -only-testing:PhilharmonicTests/StationSwitchTests
         -only-testing:PhilharmonicTests/LiveOnlySettingsTests
+    )
+fi
+if [ "${PHILHARMONIC_STREAM_METADATA_ONLY:-0}" = 1 ]; then
+    tests=(
+        -only-testing:PhilharmonicTests/BroadcastMetadataTests
+        -only-testing:PhilharmonicTests/StationSwitchTests
+        -only-testing:PhilharmonicTests/StationSourcePlaybackTests/testLivePieceAndComposerThroughNativePlayer
     )
 fi
 if [ "${PHILHARMONIC_DEBUG_EVENTS_ONLY:-0}" = 1 ]; then
