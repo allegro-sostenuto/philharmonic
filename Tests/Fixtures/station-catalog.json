@@ -185,5 +185,38 @@
     "audioURL": "https://streams.greenhost.nl:8006/oudemuziek",
     "audioFormat": "mp3",
     "metadataCapability": "stationOnly"
+  },
+  {
+    "id": "radio-esperance-chant-gregorien",
+    "name": "Radio Espérance – Chant Grégorien",
+    "subtitle": "Gregorian Chant",
+    "websiteURL": "https://radio-esperance.fr/chant-gregorien/programme/",
+    "logoAssetName": "station-esperance-gregorien",
+    "timeZoneIdentifier": "Europe/Paris",
+    "audioURL": "https://esperance.streamakaci.com/gregorien.mp3",
+    "audioFormat": "mp3",
+    "metadataCapability": "stationOnly"
+  },
+  {
+    "id": "sacredmusic-fm",
+    "name": "SacredMusic.fm",
+    "subtitle": null,
+    "websiteURL": "https://www.sacredmusic.fm/",
+    "logoAssetName": "station-sacredmusic-fm",
+    "timeZoneIdentifier": "Europe/London",
+    "audioURL": "https://streamer.radio.co/s56a86d18d/listen",
+    "audioFormat": "mp3",
+    "metadataCapability": "stationOnly"
+  },
+  {
+    "id": "reformatorische-omroep-radio-6",
+    "name": "Reformatorische Omroep Radio 6 – Psalms and Hymns",
+    "subtitle": "Reformed Broadcasting",
+    "websiteURL": "https://reformatorischeomroep.nl/nieuws/uniek-genre-op-nieuw-ro-kanaal",
+    "logoAssetName": "station-reformatorische-omroep-6",
+    "timeZoneIdentifier": "Europe/Amsterdam",
+    "audioURL": "https://stream01.sthhost.nl:8006/live",
+    "audioFormat": "mp3",
+    "metadataCapability": "stationOnly"
   }
 ]

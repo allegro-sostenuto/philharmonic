@@ -110,3 +110,15 @@ Official broadcaster assets are bundled in `Assets.xcassets/station-*.imageset`,
 The separate `stations.v2` preference stores selected ID, ordered IDs and grid/list mode. Upgrading an older install defaults to KUSC without touching appearance, autoplay, timer settings or scheduled-start storage. Normalization drops obsolete IDs and duplicates, preserves known user order, then appends new catalogue entries. A malformed field falls back independently; malformed selection falls back to KUSC.
 
 Next and Previous wrap cyclically through that saved order. Accessible Move Earlier/Move Later stop at the ends. Reordering never changes selection or playback intent. The station-order tests cover persistence, migration, cyclic transport behavior, parity and timezone/DST boundaries. All streams use the native live transport; no server, recorder, rewind history or delayed-session control is introduced.
+
+## Sacred music additions in iOS 2.9.0
+
+On November 16, 2026, all three public HTTPS feeds returned audio and decoded as stereo MP3 at 44.1 kHz. Player headers and decoded sample bitrates agreed. The catalogue uses the one confirmed rate per station. [Classical Music APIs audit](https://chatgpt.com/g/g-p-6aae94825b4481919113b55b64a49a6b-philharmonic/c/6ae89f63-d6e8-83ed-93f9-3248d11b6e94)
+
+| Station | Stream | Broadcast city and logo |
+|---|---|---|
+| Radio Espérance – Chant Grégorien | [128 kbps MP3](https://esperance.streamakaci.com/gregorien.mp3), from the [official player](https://player.radio-esperance.fr/?radio=chant-gregorien) | Saint-Étienne, France. [Broadcaster artwork](https://player.radio-esperance.fr/0_ico/apple-touch-icon-180x180.png) |
+| SacredMusic.fm | [192 kbps MP3](https://streamer.radio.co/s56a86d18d/listen), from its [Radio.co configuration](https://public.radio.co/api/v2/s56a86d18d) | London, the [published broadcast city](https://www.polyphonyandchant.org/radio). [Station artwork](https://images.radio.co/station_logos/s56a86d18d.20171020100648.jpg) |
+| Reformatorische Omroep Radio 6 – Psalms and Hymns | [192 kbps MP3](https://stream01.sthhost.nl:8006/live), resolved from the [published external-player playlist](https://radio6.reformatorischeomroep.nl/live.m3u) | [Nijkerk, Netherlands](https://reformatorischeomroep.nl/contact). [Broadcaster artwork](https://reformatorischeomroep.nl/apple-touch-icon.png) |
+
+Radio 6’s external-player feed returned audio without credentials. The broadcaster’s [FAQ](https://reformatorischeomroep.nl/faq) publishes that playlist for external listening and describes sign-in for its web player. SacredMusic.fm uses a [Union Flag asset](https://flagcdn.com/w160/gb.png) for London.

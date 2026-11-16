@@ -55,7 +55,8 @@ public enum StationCatalog {
         "wdr3": "de", "radio-chopin": "pl", "orpheus-large-scale": "ru",
         "orpheus-russian-classical": "ru", "orpheus-camerata": "ru", "hr-klasik": "hr",
         "yle-klassinen": "fi", "rete-toscana-classica": "it", "wfmt": "us",
-        "romania-muzical": "ro", "rtp-opera": "pt", "concertzender-oude-muziek": "nl"
+        "romania-muzical": "ro", "rtp-opera": "pt", "concertzender-oude-muziek": "nl",
+        "radio-esperance-chant-gregorien": "fr", "sacredmusic-fm": "gb", "reformatorische-omroep-radio-6": "nl"
     ]
     // Defaults follow KUSC's roughly 96 kbps target, using 128 where offered.
     // Single-source stations retain their verified broadcaster rate.
@@ -65,7 +66,8 @@ public enum StationCatalog {
         "wdr3": 96, "radio-chopin": 320, "orpheus-large-scale": 192,
         "orpheus-russian-classical": 192, "orpheus-camerata": 128, "hr-klasik": 128,
         "yle-klassinen": 128, "rete-toscana-classica": 192, "wfmt": 128,
-        "romania-muzical": 96, "rtp-opera": 160, "concertzender-oude-muziek": 160
+        "romania-muzical": 96, "rtp-opera": 160, "concertzender-oude-muziek": 160,
+        "radio-esperance-chant-gregorien": 128, "sacredmusic-fm": 192, "reformatorische-omroep-radio-6": 192
     ]
     fileprivate static let additionalAudioSources: [String: [StationAudioSource]] = [
         "radio-swiss-classic": [
@@ -180,6 +182,21 @@ public enum StationCatalog {
                      websiteURL: URL(string: "https://www.concertzender.nl/ontvangst/list-of-streams/")!, logoAssetName: "station-cz-oude",
                      timeZoneIdentifier: "Europe/Amsterdam",
                      audioURL: URL(string: "https://streams.greenhost.nl:8006/oudemuziek")!,
+                     audioFormat: .mp3, metadataCapability: .stationOnly),
+        RadioStation(id: "radio-esperance-chant-gregorien", name: "Radio Espérance – Chant Grégorien", subtitle: "Gregorian Chant",
+                     websiteURL: URL(string: "https://radio-esperance.fr/chant-gregorien/programme/")!, logoAssetName: "station-esperance-gregorien",
+                     timeZoneIdentifier: "Europe/Paris",
+                     audioURL: URL(string: "https://esperance.streamakaci.com/gregorien.mp3")!,
+                     audioFormat: .mp3, metadataCapability: .stationOnly),
+        RadioStation(id: "sacredmusic-fm", name: "SacredMusic.fm", subtitle: nil,
+                     websiteURL: URL(string: "https://www.sacredmusic.fm/")!, logoAssetName: "station-sacredmusic-fm",
+                     timeZoneIdentifier: "Europe/London",
+                     audioURL: URL(string: "https://streamer.radio.co/s56a86d18d/listen")!,
+                     audioFormat: .mp3, metadataCapability: .stationOnly),
+        RadioStation(id: "reformatorische-omroep-radio-6", name: "Reformatorische Omroep Radio 6 – Psalms and Hymns", subtitle: "Reformed Broadcasting",
+                     websiteURL: URL(string: "https://reformatorischeomroep.nl/nieuws/uniek-genre-op-nieuw-ro-kanaal")!, logoAssetName: "station-reformatorische-omroep-6",
+                     timeZoneIdentifier: "Europe/Amsterdam",
+                     audioURL: URL(string: "https://stream01.sthhost.nl:8006/live")!,
                      audioFormat: .mp3, metadataCapability: .stationOnly)
     ]
 

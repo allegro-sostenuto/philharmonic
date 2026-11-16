@@ -9,7 +9,8 @@ import XCTest
 final class StationCatalogTests: XCTestCase {
     func testDefaultQualityMatchesKUSCTargetWithExplicitSingleSourceExceptions() {
         let exceptions = Set(["radio-chopin", "orpheus-large-scale", "orpheus-russian-classical",
-                              "rete-toscana-classica", "rtp-opera", "concertzender-oude-muziek"])
+                              "rete-toscana-classica", "rtp-opera", "concertzender-oude-muziek",
+                              "sacredmusic-fm", "reformatorische-omroep-radio-6"])
         for station in StationCatalog.stations {
             let standard = station.defaultAudioSource
             XCTAssertEqual(standard.url, station.audioURL)
@@ -34,7 +35,7 @@ final class StationCatalogTests: XCTestCase {
         XCTAssertEqual(wdr.audioSources.map(\.id), ["hls-96", "mp3-128", "hls-192", "mp3-256"])
         XCTAssertEqual(Set(StationCatalog.stations.flatMap { station in
             station.audioSources.map(\.url)
-        }).count, 31)
+        }).count, 34)
         for station in StationCatalog.stations {
             XCTAssertEqual(Set(station.audioSources.map(\.id)).count, station.audioSources.count)
             XCTAssertTrue(station.audioSources.contains(station.defaultAudioSource))
@@ -49,8 +50,8 @@ final class StationCatalogTests: XCTestCase {
         #endif
         let stations = try JSONDecoder().decode([RadioStation].self, from: Data(contentsOf: url))
         XCTAssertEqual(stations, StationCatalog.stations)
-        XCTAssertEqual(stations.count, 17)
-        XCTAssertEqual(Set(stations.map(\.id)).count, 17)
+        XCTAssertEqual(stations.count, 20)
+        XCTAssertEqual(Set(stations.map(\.id)).count, 20)
         XCTAssertTrue(stations.allSatisfy { $0.audioURL.scheme == "https" && $0.websiteURL.scheme == "https" })
         XCTAssertTrue(stations.allSatisfy { TimeZone(identifier: $0.timeZoneIdentifier) != nil })
         XCTAssertEqual(stations.filter { $0.id.hasPrefix("orpheus-") }.count, 3)
@@ -75,17 +76,18 @@ final class StationCatalogTests: XCTestCase {
         let preferences = StationPreferences(selectedID: "retired-channel", orderedIDs: ["wdr3", "wdr3", "retired-channel", "kusc"])
         XCTAssertEqual(preferences.selectedID, "kusc")
         XCTAssertEqual(Array(preferences.orderedIDs.prefix(2)), ["wdr3", "kusc"])
-        XCTAssertEqual(preferences.orderedIDs.count, 17)
+        XCTAssertEqual(preferences.orderedIDs.count, 20)
         XCTAssertEqual(Set(preferences.orderedIDs), Set(StationCatalog.stations.map(\.id)))
     }
 
-    func testExistingElevenChannelOrderKeepsSelectionAndAppendsSixRecommendations() {
+    func testExistingElevenChannelOrderKeepsSelectionAndAppendsRecommendations() {
         let originalIDs = Array(StationCatalog.stations.prefix(11).map(\.id).reversed())
         let preferences = StationPreferences(selectedID: "sr-p2", orderedIDs: originalIDs, displayMode: .list)
         XCTAssertEqual(Array(preferences.orderedIDs.prefix(11)), originalIDs)
-        XCTAssertEqual(Array(preferences.orderedIDs.suffix(6)), [
+        XCTAssertEqual(Array(preferences.orderedIDs.suffix(9)), [
             "yle-klassinen", "rete-toscana-classica", "wfmt", "romania-muzical",
-            "rtp-opera", "concertzender-oude-muziek"
+            "rtp-opera", "concertzender-oude-muziek", "radio-esperance-chant-gregorien",
+            "sacredmusic-fm", "reformatorische-omroep-radio-6"
         ])
         XCTAssertEqual(preferences.selectedID, "sr-p2")
         XCTAssertEqual(preferences.displayMode, .list)

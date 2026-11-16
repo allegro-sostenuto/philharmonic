@@ -8,7 +8,7 @@ import XCTest
 final class StationGeographyTests: XCTestCase {
     func testEveryStationHasOneValidBaseCityInItsCountry() {
         let groups = StationGeography.groups(stations: StationCatalog.stations)
-        XCTAssertEqual(groups.count, 14)
+        XCTAssertEqual(groups.count, 17)
         XCTAssertEqual(groups.flatMap(\.stations).count, StationCatalog.stations.count)
         for station in StationCatalog.stations {
             let city = StationGeography.city(for: station)
@@ -25,7 +25,7 @@ final class StationGeographyTests: XCTestCase {
     func testCityListsPreserveSavedStationOrder() {
         let stations = Array(StationCatalog.stations.reversed())
         let groups = StationGeography.groups(stations: stations)
-        XCTAssertEqual(groups.first?.id, "utrecht")
+        XCTAssertEqual(groups.first?.id, "nijkerk")
         XCTAssertEqual(groups.first { $0.id == "moscow" }?.stations.map(\.id),
                        ["orpheus-camerata", "orpheus-russian-classical", "orpheus-large-scale"])
     }

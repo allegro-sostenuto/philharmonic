@@ -38,7 +38,10 @@ enum StationGeography {
         .init(id: "chicago", name: "Chicago", countryCode: "us", continent: .northAmerica, latitude: 41.8781, longitude: -87.6298),
         .init(id: "bucharest", name: "Bucharest", countryCode: "ro", continent: .europe, latitude: 44.4268, longitude: 26.1025),
         .init(id: "lisbon", name: "Lisbon", countryCode: "pt", continent: .europe, latitude: 38.7223, longitude: -9.1393),
-        .init(id: "utrecht", name: "Utrecht", countryCode: "nl", continent: .europe, latitude: 52.0907, longitude: 5.1214)
+        .init(id: "utrecht", name: "Utrecht", countryCode: "nl", continent: .europe, latitude: 52.0907, longitude: 5.1214),
+        .init(id: "saint-etienne", name: "Saint-Étienne", countryCode: "fr", continent: .europe, latitude: 45.4397, longitude: 4.3872),
+        .init(id: "london", name: "London", countryCode: "gb", continent: .europe, latitude: 51.5074, longitude: -0.1278),
+        .init(id: "nijkerk", name: "Nijkerk", countryCode: "nl", continent: .europe, latitude: 52.2200, longitude: 5.4861)
     ]
 
     private static let cityIDs = [
@@ -47,7 +50,8 @@ enum StationGeography {
         "wdr3": "cologne", "radio-chopin": "warsaw", "orpheus-large-scale": "moscow",
         "orpheus-russian-classical": "moscow", "orpheus-camerata": "moscow", "hr-klasik": "zagreb",
         "yle-klassinen": "helsinki", "rete-toscana-classica": "prato", "wfmt": "chicago",
-        "romania-muzical": "bucharest", "rtp-opera": "lisbon", "concertzender-oude-muziek": "utrecht"
+        "romania-muzical": "bucharest", "rtp-opera": "lisbon", "concertzender-oude-muziek": "utrecht",
+        "radio-esperance-chant-gregorien": "saint-etienne", "sacredmusic-fm": "london", "reformatorische-omroep-radio-6": "nijkerk"
     ]
 
     static func city(for station: RadioStation) -> StationCity? {
@@ -112,7 +116,7 @@ enum StationMapZoom: String, CaseIterable, Identifiable {
             let spans: [String: (Double, Double)] = ["us": (32, 64), "ch": (3.4, 5.2),
                 "se": (18, 16), "fr": (11.6, 16), "de": (10, 14), "pl": (10, 14),
                 "ru": (32, 64), "hr": (8, 10), "fi": (15, 16), "it": (17, 16),
-                "ro": (9, 12), "pt": (10, 8), "nl": (5, 6)]
+                "ro": (9, 12), "pt": (10, 8), "nl": (5, 6), "gb": (11, 15)]
             return spans[city.countryCode] ?? (10, 14)
         }
     }
@@ -130,11 +134,11 @@ enum StationMapZoom: String, CaseIterable, Identifiable {
             let distances: [String: Double] = ["us": 7_200_000, "ch": 720_000, "se": 2_500_000,
                 "fr": 1_800_000, "de": 1_600_000, "pl": 1_500_000, "ru": 5_500_000,
                 "hr": 1_000_000, "fi": 1_900_000, "it": 2_000_000, "ro": 1_300_000,
-                "pt": 1_100_000, "nl": 650_000]
+                "pt": 1_100_000, "nl": 650_000, "gb": 1_350_000]
             let centres: [String: (Double, Double)] = ["us": (39.5, -98.35), "ch": (46.8, 8.2),
                 "se": (62.8, 16.5), "fr": (46.6, 2.4), "de": (51.2, 10.4), "pl": (52, 19),
                 "ru": (58, 55), "hr": (45.4, 16.3), "fi": (64.4, 26), "it": (42.8, 12.8),
-                "ro": (45.9, 25), "pt": (39.6, -8), "nl": (52.2, 5.3)]
+                "ro": (45.9, 25), "pt": (39.6, -8), "nl": (52.2, 5.3), "gb": (54.5, -3.1)]
             let centre = centres[city.countryCode] ?? (city.latitude, city.longitude)
             return .init(latitude: centre.0, longitude: centre.1, distance: distances[city.countryCode] ?? 1_500_000)
         }

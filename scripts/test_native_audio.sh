@@ -53,6 +53,7 @@ if [ "${PHILHARMONIC_STATION_SOURCES_ONLY:-0}" = 1 ]; then
     tests=(
         -only-testing:PhilharmonicTests/StationSourcePlaybackTests
         -only-testing:PhilharmonicTests/StationCatalogTests
+        -only-testing:PhilharmonicTests/StationGeographyTests
         -only-testing:PhilharmonicTests/LiveOnlySettingsTests
         -only-testing:PhilharmonicTests/StationSwitchTests
     )
