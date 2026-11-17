@@ -1,4 +1,5 @@
 #if canImport(UIKit) && !canImport(PhilharmonicCore) && DEBUG
+import MediaPlayer
 import XCTest
 import UIKit
 @testable import Philharmonic_SE
@@ -124,6 +125,31 @@ final class StationSwitchTests: XCTestCase {
             model.pauseRemote()
             XCTAssertNil(model.liveListing)
         }
+    }
+
+    @MainActor func testWDRCaptionUpdatesSystemNowPlayingVerbatim() throws {
+        let (model, restore) = fixture(playing: false)
+        defer { restore() }
+        model.selectStation("wdr3")
+        model.configureAudioRecoveryForTesting(playing: true)
+        let system = MPNowPlayingInfoCenter.default()
+        let first = "Peter Tschaikowsky - Pezzo capriccioso, op. 62"
+        let second = "Dirigent: François-Xavier Roth · Gürzenich-Orchester Köln"
+        let firstListing = try XCTUnwrap(BroadcastMetadataParser.wdrRadioText(Data(first.utf8), receivedAt: Date()))
+        let secondListing = try XCTUnwrap(BroadcastMetadataParser.wdrRadioText(Data(second.utf8), receivedAt: Date()))
+
+        model.setBroadcasterListingForTesting([firstListing])
+        XCTAssertEqual(system.nowPlayingInfo?[MPMediaItemPropertyTitle] as? String, first)
+        XCTAssertEqual(system.nowPlayingInfo?[MPMediaItemPropertyArtist] as? String, "WDR 3")
+        XCTAssertEqual(system.nowPlayingInfo?[MPMediaItemPropertyComposer] as? String, "")
+        model.setBroadcasterListingForTesting([secondListing])
+        XCTAssertEqual(system.nowPlayingInfo?[MPMediaItemPropertyTitle] as? String, second)
+
+        model.setBroadcasterListingForTesting([])
+        XCTAssertEqual(system.nowPlayingInfo?[MPMediaItemPropertyTitle] as? String, "WDR 3")
+        model.setBroadcasterListingForTesting([secondListing])
+        model.selectStation("kusc")
+        XCTAssertEqual(system.nowPlayingInfo?[MPMediaItemPropertyTitle] as? String, StationCatalog.defaultStation.name)
     }
 
     @MainActor func testQualitySwitchPreservesSavedStationDuringSilentSchedulePreparation() {

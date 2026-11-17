@@ -7,6 +7,7 @@ import UIKit
     private var previousArtwork: UIImage?
     private var previousPlaying: Bool?
     private var previousStationID: String?
+    private var previousCaption: String?
     init(play: @escaping () -> Void, pause: @escaping () -> Void, toggle: @escaping () -> Void,
          next: (() -> Void)? = nil, previous: (() -> Void)? = nil) {
         let c = MPRemoteCommandCenter.shared()
@@ -35,15 +36,18 @@ import UIKit
         }
     }
     func update(item: ProgrammeItem?, artwork: UIImage?, playing: Bool,
-                station: RadioStation = StationCatalog.defaultStation) {
+                station: RadioStation = StationCatalog.defaultStation, liveCaption: String? = nil) {
+        let caption = item == nil ? liveCaption : nil
         guard item != previousItem || artwork !== previousArtwork || playing != previousPlaying ||
-                station.id != previousStationID else { return }
+                station.id != previousStationID || caption != previousCaption else { return }
         previousItem = item; previousArtwork = artwork; previousPlaying = playing
         previousStationID = station.id
+        previousCaption = caption
         let artists = item.map { [$0.composer, $0.performers].filter { !$0.isEmpty }.joined(separator: " · ") } ?? ""
+        let stationDetail = caption == nil ? (station.subtitle ?? "Live radio") : station.name
         var info: [String: Any] = [
-            MPMediaItemPropertyTitle: item?.title ?? station.name,
-            MPMediaItemPropertyArtist: artists.isEmpty ? station.subtitle ?? "Live radio" : artists,
+            MPMediaItemPropertyTitle: item?.title ?? caption ?? station.name,
+            MPMediaItemPropertyArtist: artists.isEmpty ? stationDetail : artists,
             MPMediaItemPropertyComposer: item?.composer ?? "",
             MPMediaItemPropertyAlbumTitle: station.name,
             MPNowPlayingInfoPropertyExternalContentIdentifier: station.id,

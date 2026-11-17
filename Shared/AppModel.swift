@@ -38,6 +38,9 @@ import Network
     @Published private(set) var bufferFailureMessage: String?
     var diagnostics: PlaybackDiagnostics { engine.diagnostics }
     var selectedAudioSource: StationAudioSource { settings.audioSource(for: selectedStation) }
+    var wdrLiveCaption: String? {
+        selectedStation.metadataCapability == .wdr3 ? liveListing?.programme : nil
+    }
 
     // Transport exposes intent so Pause remains available while waiting or seeking.
     var isPlaying: Bool { wantsPlayback }
@@ -1946,7 +1949,8 @@ import Network
         refreshSystemSurfaces()
     }
     private func refreshSystemSurfaces() {
-        nowPlaying.update(item: currentItem, artwork: artwork, playing: isAudible, station: selectedStation)
+        nowPlaying.update(item: currentItem, artwork: artwork, playing: isAudible,
+                          station: selectedStation, liveCaption: wdrLiveCaption)
         refreshHomeWidgets()
         #if MODERN
         let surfaceStatus: String?

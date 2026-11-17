@@ -22,8 +22,10 @@ import UIKit
         now.updateNowPlayingButtons([live])
         // The Now Playing template must be pushed into navigation; it is not a
         // supported tab root. A list row provides navigation without seeking audio.
-        let station = AppModel.shared.selectedStation
-        let showNowPlaying = CPListItem(text: station.name, detailText: station.subtitle ?? "Now Playing",
+        let model = AppModel.shared
+        let station = model.selectedStation
+        let showNowPlaying = CPListItem(text: station.name,
+                                       detailText: model.wdrLiveCaption ?? station.subtitle ?? "Now Playing",
                                        image: station.flagAssetName.flatMap { UIImage(named: $0) })
         nowPlayingEntry = showNowPlaying
         showNowPlaying.handler = { [weak self] _, completion in
@@ -55,7 +57,7 @@ import UIKit
         observer = NotificationCenter.default.addObserver(forName: .philharmonicPlaybackChanged, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.updateProgramme() }
         }
-        AppModel.shared.launch()
+        model.launch()
         updateProgramme()
     }
     func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene,
@@ -67,13 +69,16 @@ import UIKit
     private func updateProgramme() {
         let model = AppModel.shared
         let station = model.selectedStation
+        let detail = model.wdrLiveCaption ?? station.subtitle ?? "Now Playing"
+        if nowPlayingEntry?.detailText != detail {
+            nowPlayingEntry?.setDetailText(detail)
+        }
         let items = [model.currentItem].compactMap { $0 } + model.previousItems + model.upcomingItems
         let contentKeys = items.map { [$0.id, $0.title, $0.composer].joined(separator: "\u{1f}") }
         let key = ([station.id, model.programmeName ?? "", model.hostName ?? ""] + contentKeys).joined(separator: "\u{1e}")
         guard key != contextKey else { return }; contextKey = key
         nowPlayingEntry?.setText(station.name)
         nowPlayingEntry?.setImage(station.flagAssetName.flatMap { UIImage(named: $0) })
-        nowPlayingEntry?.setDetailText(station.subtitle ?? "Now Playing")
         func row(_ piece: ProgrammeItem) -> CPListItem {
             let item = CPListItem(text: piece.title, detailText: piece.composer)
             item.isEnabled = false // Informational only: no tap or seek handler.

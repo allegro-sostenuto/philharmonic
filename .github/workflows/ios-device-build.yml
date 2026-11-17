@@ -139,6 +139,13 @@ jobs:
       - name: Check scheduled-start policy and debug journal
         if: inputs.map_quality_check == 'schedule-debug' || inputs.map_quality_check == 'schedule-volume' || inputs.map_quality_check == 'schedule-category'
         run: swift test --filter 'ScheduleRegressionTests|PlaybackDiagnosticTests|PlaybackDebugJournalTests'
+      - name: Compile CarPlay metadata surfaces
+        if: inputs.map_quality_check == 'metadata'
+        run: |
+          for scheme in Philharmonic-SE-CarPlay Philharmonic-17-CarPlay; do
+            xcodebuild -quiet -project Philharmonic.xcodeproj -scheme "$scheme" -configuration Debug \
+              -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+          done
       - name: Run hosted media tests
         env:
           PHILHARMONIC_STATION_SOURCES_ONLY: ${{ inputs.source_check && '1' || '0' }}
