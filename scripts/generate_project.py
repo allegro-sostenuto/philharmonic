@@ -20,7 +20,7 @@ ui_tests=sorted(p.relative_to(ROOT).as_posix() for p in (ROOT/'TestsUI').glob('*
 resources=['Assets.xcassets','Flags.xcassets','Configuration/PrivacyInfo.xcprivacy']
 app_configs=[('Philharmonic-SE','16.0','classic'),('Philharmonic-17','26.0','modern')]
 # Keep the SE app and its extension at the paused release's marketing version.
-marketing_versions={'classic':'2.9.3','modern':'2.9.3'}
+marketing_versions={'classic':'2.9.3','modern':'2.10.0'}
 alltargets=[x[0] for x in app_configs]+['PhilharmonicLiveActivity','PhilharmonicWidgets','PhilharmonicTests','PhilharmonicUITests']
 base_config=file('Configuration/Signing.xcconfig')
 productrefs={}

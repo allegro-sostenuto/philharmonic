@@ -40,6 +40,11 @@ struct AppSettings: Codable, Equatable {
               var value = try? JSONDecoder().decode(Self.self, from: data) else { return .init() }
         value.lastSleepMinutes = min(720, max(0, value.lastSleepMinutes))
         value.scheduledSpeakerVolume = value.scheduledSpeakerVolume.flatMap { $0.isFinite ? min(1, max(0, $0)) : nil }
+        for (oldID, newID) in StationCatalog.stationReplacements {
+            if let source = value.stationAudioSources?.removeValue(forKey: oldID), value.stationAudioSources?[newID] == nil {
+                value.stationAudioSources?[newID] = source
+            }
+        }
         value.save(to: defaults)
         return value
     }

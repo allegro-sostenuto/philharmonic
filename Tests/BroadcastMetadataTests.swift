@@ -118,15 +118,15 @@ final class BroadcastMetadataTests: XCTestCase {
 
     func testRadioFranceUsesItsOwnTimedSongAndExplicitComposerFields() throws {
         let response = Data(#"""
-        {"stationId":401,"steps":{
-          "work":{"stationId":401,"embedType":"song","start":100,"end":208,"title":"Mazurka","composers":"Pauline Viardot","authors":"A pianist"},
-          "next":{"stationId":401,"embedType":"song","start":203,"end":300,"title":"Sonate","authors":"A second pianist"},
+        {"stationId":402,"steps":{
+          "work":{"stationId":402,"embedType":"song","start":100,"end":208,"title":"Mazurka","composers":"Pauline Viardot","authors":"A pianist"},
+          "next":{"stationId":402,"embedType":"song","start":203,"end":300,"title":"Sonate","authors":"A second pianist"},
           "wrong":{"stationId":408,"embedType":"song","start":100,"end":300,"title":"Different channel","composers":"Wrong"},
-          "show":{"stationId":401,"embedType":"diffusion","start":301,"end":350,"title":"A programme"},
-          "bad":{"stationId":401,"embedType":"song","start":390,"end":380,"title":"Bad time"}
+          "show":{"stationId":402,"embedType":"diffusion","start":301,"end":350,"title":"A programme"},
+          "bad":{"stationId":402,"embedType":"song","start":390,"end":380,"title":"Bad time"}
         }}
         """#.utf8)
-        let items = try BroadcastMetadataParser.radioFrance(response, stationID: 401)
+        let items = try BroadcastMetadataParser.radioFrance(response, stationID: 402)
         XCTAssertThrowsError(try BroadcastMetadataParser.radioFrance(response, stationID: 408))
         XCTAssertEqual(items.count, 2)
         let inside = BroadcastMetadataParser.radioFrancePiece(at: Date(timeIntervalSince1970: 130), in: items)
@@ -152,6 +152,11 @@ final class BroadcastMetadataTests: XCTestCase {
         legacy["stationID"] = "retired-station"
         XCTAssertEqual(try JSONDecoder().decode(ScheduledStartRequest.self,
             from: JSONSerialization.data(withJSONObject: legacy)).stationID, "kusc")
+        legacy["stationID"] = "france-musique-classique-easy"
+        let replacement = try JSONDecoder().decode(ScheduledStartRequest.self,
+            from: JSONSerialization.data(withJSONObject: legacy))
+        XCTAssertEqual(replacement.stationID, "france-musique-classique-plus")
+        XCTAssertEqual(replacement.date, request.date)
     }
 
     private func fixture(_ name: String, extension suffix: String) throws -> Data {

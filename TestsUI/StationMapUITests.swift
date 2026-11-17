@@ -35,9 +35,9 @@ final class StationMapUITests: XCTestCase {
         XCTAssertTrue(app.buttons["stations-mode-map"].isSelected)
         app.buttons["map-cities"].tap()
         app.buttons["map-city-list-paris"].tap()
-        let easy = app.buttons["map-station-france-musique-classique-easy"]
+        let plus = app.buttons["map-station-france-musique-classique-plus"]
         let baroque = app.buttons["map-station-france-musique-la-baroque"]
-        XCTAssertTrue(easy.waitForExistence(timeout: 5))
+        XCTAssertTrue(plus.waitForExistence(timeout: 5))
         XCTAssertTrue(baroque.exists)
         capture("station-map-paris-choices-dark")
         baroque.tap()

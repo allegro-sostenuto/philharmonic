@@ -268,13 +268,15 @@ import Network
 
     func handleStationPlaybackIntent(playing: Bool?, stationID: String?) {
         receivedWidgetCommand = true
-        guard stationID == nil || stationID == selectedStation.id else { refreshSystemSurfaces(); return }
+        let targetID = stationID.map(StationCatalog.currentID(for:))
+        guard targetID == nil || targetID == selectedStation.id else { refreshSystemSurfaces(); return }
         setPlaybackFromWidget(playing ?? !isPlaying)
     }
 
     func handleStationLiveIntent(stationID: String?) {
         receivedWidgetCommand = true
-        guard stationID == nil || stationID == selectedStation.id else { refreshSystemSurfaces(); return }
+        let targetID = stationID.map(StationCatalog.currentID(for:))
+        guard targetID == nil || targetID == selectedStation.id else { refreshSystemSurfaces(); return }
         goLive()
     }
 
@@ -297,10 +299,8 @@ import Network
     /// Selection is independent of playback intent and of an already saved start.
     /// Retire the whole old session before publishing the new station identity.
     private func switchStation(_ id: String, reconnect: Bool = true) {
-        if StationCatalog.station(id: id) != nil, id != selectedStation.id {
-            recordDebugEvent(category: "playback", name: "station_selection_changed", details: ["next_station_id": id])
-        }
         guard let station = StationCatalog.station(id: id), station.id != selectedStation.id else { return }
+        recordDebugEvent(category: "playback", name: "station_selection_changed", details: ["next_station_id": station.id])
         stationSelectionKeepsActivity = stationSelectionKeepsActivity || hasStartedEngine
         stationGeneration = UUID(); connectionGeneration = UUID(); metadataGeneration = UUID()
         connectionTask?.cancel(); connectionTask = nil
@@ -346,7 +346,7 @@ import Network
         }
         let previous = selectedAudioSource
         recordDebugEvent(category: "settings", name: "quality_changed",
-                         details: ["target_station_id": stationID, "chosen_source_id": sourceID])
+                         details: ["target_station_id": station.id, "chosen_source_id": sourceID])
         settings.setAudioSource(sourceID, for: station)
         settings.save()
         finishAudioQualityChange(previous: previous)

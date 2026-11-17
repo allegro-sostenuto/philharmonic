@@ -276,6 +276,34 @@ final class StationSwitchTests: XCTestCase {
         XCTAssertFalse(model.isPlaying)
     }
 
+    func testClassiquePlusMigratesSavedEasyQualityAndPrefersAnExplicitPlusChoice() throws {
+        let suite = "station-quality-upgrade-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let plus = try XCTUnwrap(StationCatalog.station(id: "france-musique-classique-plus"))
+        let data = try JSONEncoder().encode(AppSettings())
+        var legacy = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        legacy["stationAudioSources"] = ["france-musique-classique-easy": "aac-192"]
+        defaults.set(try JSONSerialization.data(withJSONObject: legacy), forKey: "settings.v1")
+        XCTAssertEqual(AppSettings.load(from: defaults).audioSource(for: plus).id, "aac-192")
+
+        legacy["stationAudioSources"] = ["france-musique-classique-easy": "aac-192", plus.id: "hls-96"]
+        defaults.set(try JSONSerialization.data(withJSONObject: legacy), forKey: "settings.v1")
+        XCTAssertEqual(AppSettings.load(from: defaults).audioSource(for: plus).id, "hls-96")
+    }
+
+    @MainActor func testSavedClassiqueEasyWidgetCanControlItsReplacement() {
+        let (model, restore) = fixture(playing: false)
+        defer { restore() }
+        model.selectStation("france-musique-classique-plus")
+        model.handleStationPlaybackIntent(playing: true, stationID: "france-musique-classique-easy")
+        XCTAssertTrue(model.isPlaying)
+        model.handleStationPlaybackIntent(playing: false, stationID: "france-musique-classique-easy")
+        XCTAssertFalse(model.isPlaying)
+        model.handleStationLiveIntent(stationID: "france-musique-classique-easy")
+        XCTAssertTrue(model.isPlaying)
+    }
+
     @MainActor func testSavedStartUsesCapturedStationAfterBrowsingBeforeAndDuringPreparation() {
         let (model, restore) = fixture(playing: false)
         defer { restore() }

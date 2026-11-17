@@ -45,7 +45,7 @@ public struct RadioStation: Identifiable, Codable, Equatable, Sendable {
     public var supportsProgrammes: Bool { metadataCapability == .kusc }
     var radioFranceMetadataID: Int? {
         switch id {
-        case "france-musique-classique-easy": return 401
+        case "france-musique-classique-plus": return 402
         case "france-musique-la-baroque": return 408
         default: return nil
         }
@@ -68,7 +68,7 @@ public struct RadioStation: Identifiable, Codable, Equatable, Sendable {
 public enum StationCatalog {
     fileprivate static let countryCodes = [
         "kusc": "us", "radio-swiss-classic": "ch", "sr-p2": "se",
-        "france-musique-classique-easy": "fr", "france-musique-la-baroque": "fr",
+        "france-musique-classique-plus": "fr", "france-musique-la-baroque": "fr",
         "wdr3": "de", "radio-chopin": "pl", "orpheus-large-scale": "ru",
         "orpheus-russian-classical": "ru", "orpheus-camerata": "ru", "hr-klasik": "hr",
         "yle-klassinen": "fi", "rete-toscana-classica": "it", "wfmt": "us",
@@ -79,7 +79,7 @@ public enum StationCatalog {
     // Single-source stations retain their verified broadcaster rate.
     fileprivate static let defaultBitrates = [
         "kusc": 96, "radio-swiss-classic": 96, "sr-p2": 128,
-        "france-musique-classique-easy": 128, "france-musique-la-baroque": 128,
+        "france-musique-classique-plus": 128, "france-musique-la-baroque": 128,
         "wdr3": 96, "radio-chopin": 320, "orpheus-large-scale": 192,
         "orpheus-russian-classical": 192, "orpheus-camerata": 128, "hr-klasik": 128,
         "yle-klassinen": 128, "rete-toscana-classica": 192, "wfmt": 128,
@@ -95,9 +95,9 @@ public enum StationCatalog {
             .init(url: URL(string: "https://live1.sr.se/p2-aac-32")!, format: .aac, bitrateKbps: 32),
             .init(url: URL(string: "https://live1.sr.se/p2-aac-320")!, format: .aac, bitrateKbps: 320)
         ],
-        "france-musique-classique-easy": [
-            .init(url: URL(string: "https://stream.radiofrance.fr/francemusiqueeasyclassique/francemusiqueeasyclassique_midfi.m3u8")!, format: .hls, bitrateKbps: 96),
-            .init(url: URL(string: "https://icecast.radiofrance.fr/francemusiqueeasyclassique-hifi.aac")!, format: .aac, bitrateKbps: 192)
+        "france-musique-classique-plus": [
+            .init(url: URL(string: "https://stream.radiofrance.fr/francemusiqueclassiqueplus/francemusiqueclassiqueplus_midfi.m3u8")!, format: .hls, bitrateKbps: 96),
+            .init(url: URL(string: "https://icecast.radiofrance.fr/francemusiqueclassiqueplus-hifi.aac")!, format: .aac, bitrateKbps: 192)
         ],
         "france-musique-la-baroque": [
             .init(url: URL(string: "https://stream.radiofrance.fr/francemusiquebaroque/francemusiquebaroque_midfi.m3u8")!, format: .hls, bitrateKbps: 96),
@@ -136,10 +136,10 @@ public enum StationCatalog {
                      timeZoneIdentifier: "Europe/Stockholm",
                      audioURL: URL(string: "https://live1.sr.se/p2-aac-128")!,
                      audioFormat: .aac, metadataCapability: .srP2),
-        RadioStation(id: "france-musique-classique-easy", name: "France Musique · Classique Easy", subtitle: nil,
+        RadioStation(id: "france-musique-classique-plus", name: "France Musique · Classique Plus", subtitle: nil,
                      websiteURL: URL(string: "https://www.radiofrance.fr/francemusique")!, logoAssetName: "station-france-musique",
                      timeZoneIdentifier: "Europe/Paris",
-                     audioURL: URL(string: "https://icecast.radiofrance.fr/francemusiqueeasyclassique-midfi.mp3")!,
+                     audioURL: URL(string: "https://icecast.radiofrance.fr/francemusiqueclassiqueplus-midfi.mp3")!,
                      audioFormat: .mp3, metadataCapability: .radioFrance),
         RadioStation(id: "france-musique-la-baroque", name: "France Musique · La Baroque", subtitle: nil,
                      websiteURL: URL(string: "https://www.radiofrance.fr/francemusique")!, logoAssetName: "station-france-musique",
@@ -224,7 +224,14 @@ public enum StationCatalog {
     ]
 
     public static let defaultStation = stations[0]
-    public static func station(id: String) -> RadioStation? { stations.first { $0.id == id } }
+    static let stationReplacements = ["france-musique-classique-easy": "france-musique-classique-plus"]
+
+    static func currentID(for id: String) -> String { stationReplacements[id] ?? id }
+
+    public static func station(id: String) -> RadioStation? {
+        let activeID = currentID(for: id)
+        return stations.first { $0.id == activeID }
+    }
 }
 
 public enum StationDisplayMode: String, Codable, CaseIterable, Sendable {
@@ -260,8 +267,10 @@ public struct StationPreferences: Codable, Equatable {
     public mutating func normalize() {
         let known = Set(StationCatalog.stations.map(\.id))
         var seen = Set<String>()
-        orderedIDs = orderedIDs.filter { known.contains($0) && seen.insert($0).inserted }
+        orderedIDs = orderedIDs.map(StationCatalog.currentID(for:))
+            .filter { known.contains($0) && seen.insert($0).inserted }
         orderedIDs += StationCatalog.stations.map(\.id).filter { !seen.contains($0) }
+        selectedID = StationCatalog.currentID(for: selectedID)
         if !known.contains(selectedID) { selectedID = StationCatalog.defaultStation.id }
     }
 
@@ -289,7 +298,7 @@ public struct StationPreferences: Codable, Equatable {
         var valid = self
         valid.normalize()
         let count = valid.orderedIDs.count
-        let source = valid.orderedIDs.firstIndex(of: id) ?? 0
+        let source = valid.orderedIDs.firstIndex(of: StationCatalog.currentID(for: id)) ?? 0
         let destination = (source + offset % count + count) % count
         return valid.orderedIDs[destination]
     }

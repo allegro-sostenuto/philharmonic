@@ -156,7 +156,7 @@ final class StationSourcePlaybackTests: XCTestCase {
         engine.volume = 0
         defer { engine.stop() }
         let stations = StationCatalog.stations.filter { $0.metadataCapability == .radioFrance }
-        XCTAssertEqual(stations.compactMap(\.radioFranceMetadataID), [401, 408])
+        XCTAssertEqual(stations.compactMap(\.radioFranceMetadataID), [402, 408])
         for station in stations {
             let source = try XCTUnwrap(station.audioSources.first { $0.format == .hls })
             let service = MetadataService(station: station)

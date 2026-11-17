@@ -46,7 +46,7 @@ enum StationGeography {
 
     private static let cityIDs = [
         "kusc": "los-angeles", "radio-swiss-classic": "basel", "sr-p2": "stockholm",
-        "france-musique-classique-easy": "paris", "france-musique-la-baroque": "paris",
+        "france-musique-classique-plus": "paris", "france-musique-la-baroque": "paris",
         "wdr3": "cologne", "radio-chopin": "warsaw", "orpheus-large-scale": "moscow",
         "orpheus-russian-classical": "moscow", "orpheus-camerata": "moscow", "hr-klasik": "zagreb",
         "yle-klassinen": "helsinki", "rete-toscana-classica": "prato", "wfmt": "chicago",

@@ -29,9 +29,10 @@ final class StationCatalogTests: XCTestCase {
         XCTAssertEqual(swiss.audioSources.map(\.id), ["aac-96", "mp3-128", "aac-192"])
         let p2 = try XCTUnwrap(StationCatalog.station(id: "sr-p2"))
         XCTAssertEqual(p2.audioSources.map(\.id), ["aac-32", "aac-128", "aac-320"])
-        let france = try XCTUnwrap(StationCatalog.station(id: "france-musique-la-baroque"))
-        XCTAssertEqual(france.audioSources.map(\.id), ["hls-96", "mp3-128", "aac-192"])
-        XCTAssertEqual(france.defaultAudioSource.id, "mp3-128")
+        for france in StationCatalog.stations where france.metadataCapability == .radioFrance {
+            XCTAssertEqual(france.audioSources.map(\.id), ["hls-96", "mp3-128", "aac-192"], france.id)
+            XCTAssertEqual(france.defaultAudioSource.id, "mp3-128", france.id)
+        }
         let wdr = try XCTUnwrap(StationCatalog.station(id: "wdr3"))
         XCTAssertEqual(wdr.audioSources.map(\.id), ["hls-96", "mp3-128", "hls-192", "mp3-256"])
         XCTAssertEqual(Set(StationCatalog.stations.flatMap { station in
@@ -79,6 +80,18 @@ final class StationCatalogTests: XCTestCase {
         XCTAssertEqual(Array(preferences.orderedIDs.prefix(2)), ["wdr3", "kusc"])
         XCTAssertEqual(preferences.orderedIDs.count, 20)
         XCTAssertEqual(Set(preferences.orderedIDs), Set(StationCatalog.stations.map(\.id)))
+    }
+
+    func testClassiquePlusKeepsEasySelectionAndPositionOnUpgrade() throws {
+        let legacy = Data(#"""
+        {"selectedID":"france-musique-classique-easy","displayMode":"list",
+         "orderedIDs":["wdr3","france-musique-classique-easy","kusc","france-musique-classique-plus"]}
+        """#.utf8)
+        let preferences = try JSONDecoder().decode(StationPreferences.self, from: legacy)
+        XCTAssertEqual(preferences.selectedID, "france-musique-classique-plus")
+        XCTAssertEqual(Array(preferences.orderedIDs.prefix(3)), ["wdr3", preferences.selectedID, "kusc"])
+        XCTAssertEqual(preferences.orderedIDs.filter { $0 == preferences.selectedID }.count, 1)
+        XCTAssertEqual(preferences.displayMode, .list)
     }
 
     func testExistingElevenChannelOrderKeepsSelectionAndAppendsRecommendations() {

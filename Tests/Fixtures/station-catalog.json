@@ -33,13 +33,13 @@
     "metadataCapability": "srP2"
   },
   {
-    "id": "france-musique-classique-easy",
-    "name": "France Musique · Classique Easy",
+    "id": "france-musique-classique-plus",
+    "name": "France Musique · Classique Plus",
     "subtitle": null,
     "websiteURL": "https://www.radiofrance.fr/francemusique",
     "logoAssetName": "station-france-musique",
     "timeZoneIdentifier": "Europe/Paris",
-    "audioURL": "https://icecast.radiofrance.fr/francemusiqueeasyclassique-midfi.mp3",
+    "audioURL": "https://icecast.radiofrance.fr/francemusiqueclassiqueplus-midfi.mp3",
     "audioFormat": "mp3",
     "metadataCapability": "radioFrance"
   },
