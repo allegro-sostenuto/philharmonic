@@ -13,13 +13,13 @@ Earlier playback, scheduling, widget and interface validation remains documented
 ## Windows build and installation
 
 1. Extract the philharmonic folder and publish its contents at the root of a public GitHub repository, including `.github`. Keep the app bundle prefix stable and leave `DEVELOPMENT_TEAM` blank for this route.
-2. The **Build unsigned iPhone apps** workflow runs Foundation tests and unsigned device builds on a standard `macos-26` runner. Download the appropriate `Philharmonic-SE-unsigned-ipa` or `Philharmonic-17-unsigned-ipa` artifact.
+2. The **Build unsigned iPhone apps** workflow runs Foundation tests and builds the iPhone 17 IPA on a standard `macos-26` runner. Download the `Philharmonic-17-unsigned-ipa` artifact.
 3. Extract the artifact ZIP. Import its IPA using **AltStore Classic → My Apps → +**, with AltServer for Windows reachable. Keep the widget extension in either build; the iPhone 17 extension also provides Live Activities.
 4. Enable Developer Mode and verify initial playback and manual Refresh All. Background refresh is attempted automatically; a missed refresh still requires intervention. The existing build is re-signed without a weekly source rebuild.
 
 Public standard runners are free under [GitHub's runner policy](https://docs.github.com/en/actions/reference/runners/github-hosted-runners). [AltStore documents](https://faq.altstore.io/altstore-classic/your-altstore) the seven-day expiry, background attempts, and manual fallback. Current AltStore 2.3 requires iOS 17.4; an SE on iOS 16 needs AltServer's documented last-compatible-version selection. The original 2016 SE cannot run this app.
 
-The two ordinary schemes already exclude restricted entitlements and serve as the personal-sideload configurations. CI never builds the optional CarPlay variants and never receives Apple signing secrets. [Workflow viability and entitlement audit](docs/windows_workflow_review.md) distinguishes documentation/source verification from the still-unrun GitHub build and device tests.
+SE releases are paused at **2.9.3, build 106**. Use the saved SE IPA for reinstallation. [SE build 106](https://github.com/allegro-sostenuto/philharmonic/actions/runs/43998933481)
 
 Direct Mac/Xcode installation remains available in [mac_installation.md](docs/mac_installation.md). No existing app feature was removed to support unsigned compilation.
 
@@ -27,12 +27,8 @@ The Philharmonic app itself needs no third-party SDKs, API keys, backend, analyt
 
 | Scheme | Minimum OS | Features |
 |---|---|---|
-| Philharmonic-SE | iOS 16.0 | Shared full player, native system media controls |
+| Philharmonic-SE | iOS 16.0 | Retained for compatibility testing and future releases |
 | Philharmonic-17 | iOS 26.0 | Shared player plus interactive Live Activity |
-| Philharmonic-SE-CarPlay | iOS 16.0 | SE build plus restricted CarPlay audio entitlement |
-| Philharmonic-17-CarPlay | iOS 26.0 | iPhone 17 build plus restricted CarPlay audio entitlement |
-
-CarPlay variants intentionally use the corresponding normal app's bundle identifier. Install one variant per device; installing another updates/replaces that app. Default schemes do not request the restricted entitlement.
 
 ## Versioning
 
@@ -48,7 +44,7 @@ The iPhone app uses major.minor.patch: major updates increment the first number,
 - Programme rows are informational. Neither taps nor long presses seek. System Next/Previous switch stations in saved order; scrub and seek commands remain disabled.
 - Zero-to-twelve-hour sleep wheel, app-pause timer choices, broadcast-item endpoint/fallback/retry decisions, linear fades, and network shutdown on completion.
 - Scheduled start within 24 hours: silent standby and preparation let other apps play. At or after the selected time, the station captured when saving takes audio focus and fades in over a full minute from actual readiness, including late starts. Choose always-speaker or a confirmed output with speaker/notification fallback. A reminder two minutes beforehand opens the sheet at Delete Scheduled Start. Every request clears ten minutes after its selected time; a successful running session keeps playing with its battery protection, and an unfinished fade keeps its remaining duration. A consumed request cannot re-arm after relaunch. Optional battery operation stops only after continuously unplugged and below X% for Y minutes (X at least 25%; Y from 1 to 20 minutes). Pause silences current audio while retaining a future start; after the deadline it waits for Play. Manual Play immediately attempts activation independently of automatic schedule restrictions. Persistent speaker mode survives sleep timers, disconnects and interruptions within the start window; iOS controls when audio can resume.
-- iPhone 17 Live Activity with locally encoded artwork, Play/Pause and Live; optional CarPlay Now Playing and informational programme lists.
+- iPhone 17 Live Activity with locally encoded artwork, Play/Pause and Live.
 
 ## Station interfaces and refresh
 
@@ -71,9 +67,9 @@ These limits affect the requested acceptance criteria and are not hidden behind 
 
 - **Future pieces:** observed future programme blocks contain no songs. At live time the upcoming list therefore explains that pieces have not been published. No playlist entries are fabricated.
 - **Movement timing:** the feed gives explicit broadcast-item start/end timestamps, not an independently named movement boundary. The timer treats that supplied item endpoint as the reliable boundary; when absent it uses the next piece/programme start, retries for up to a minute, then fades. A multi-movement broadcast item cannot be split accurately without station data.
-- **Lock Screen Live:** Apple's public remote command interface has no custom Live command. System controls provide Play/Pause and station Next/Previous, with seeking disabled. Live is available in the app, the custom iPhone 17 Live Activity, and the optional CarPlay Now Playing button. See [MPRemoteCommandCenter](https://developer.apple.com/documentation/mediaplayer/mpremotecommandcenter).
+- System controls provide Play/Pause and station Next/Previous. The app and iPhone 17 Live Activity also offer Live. [MPRemoteCommandCenter](https://developer.apple.com/documentation/mediaplayer/mpremotecommandcenter)
 - **Dynamic Island:** iOS controls visibility, competition with native media UI, authentication and lifetime. Pausing does not explicitly end the app's activity. Apple limits an active Live Activity to eight hours; it is not guaranteed permanently visible. [Apple ActivityKit documentation](https://developer.apple.com/documentation/activitykit/displaying-live-data-with-live-activities).
-- **CarPlay:** full custom app UI requires an Apple-approved audio entitlement and matching profile. Adding the entitlement file alone does not grant access. [Apple CarPlay entitlements](https://developer.apple.com/documentation/carplay/requesting-carplay-entitlements).
+- CarPlay uses Apple's built-in Now Playing screen for playback controls and station metadata, including WDR 3's verbatim live caption. [Apple's CarPlay documentation](https://developer.apple.com/videos/play/wwdc2017/719/)
 - **Background execution:** silent standby is best effort, not an alarm guarantee. Force-quit, system termination, or reboot may defeat automatic playback; an already-scheduled notification remains the fallback when the system can deliver it. Opening a delivered scheduled-start notification explicitly starts live, regardless of Auto-play preference.
 - **Interrupted audio:** explicit Play attempts session activation immediately even after a stale interruption. Failed activation retries every five seconds for the first minute, then every fifteen seconds; Pause cancels playback retries. Automatic recovery defers while another app plays, until the scheduled takeover. A denied audio session still prevents playback until iOS permits it.
 - **Server-backed delay is deferred:** no server source, recorder, historical download or offline reserve is included. Legacy iOS buffering algorithms remain only for regression/reference work and are inaccessible to normal app playback. Android's bounded temporary HLS files provide transport headroom only. See [audio_engine.md](docs/audio_engine.md).
@@ -93,9 +89,8 @@ Both builds share widget metadata and a bounded artwork thumbnail through their 
 - `Shared/UI`: responsive native views, wheels, output picker and programme display.
 - `Shared/System`, `Shared/Timers`: system media, notifications, artwork and silent standby.
 - `Modern`, `Widget`: iOS 26 Live Activity attributes, media intents and presentation.
-- `CarPlay`: isolated entitled scene and informational programme view.
 - `Tests`: policy, stream-format and real station-schema regression tests.
-- `.github/workflows/ios-device-build.yml`: two free personal-device CI artifacts.
+- `.github/workflows/ios-device-build.yml` builds the unsigned iPhone 17 IPA.
 - `scripts/build_unsigned_ipa.sh`, `scripts/validate_ipa.py`: unsigned packaging and device-binary validation.
 
 Preferences use UserDefaults. There is no persistent audio history or delayed cursor. Temporary transport caches are disposable. No active sleep timer is restored after process death. Scheduled requests persist their date, output and power policy; persistent speaker intent can recover on relaunch, with battery observation restarting. Reopening an app cannot make iOS retrospectively run a missed background timer.
@@ -108,4 +103,4 @@ swift test
 ./scripts/build_and_test.sh
 ```
 
-The script runs Foundation tests and unsigned simulator builds for all four schemes. It does not sign, install, or claim a hardware pass. For hosted XCTest execution, select `Philharmonic-SE`, choose an installed iPhone simulator, and press Command-U. Complete the separate physical-device checklist with the debugger detached. No test depends on live station availability; source fixtures are captured station data used only in tests.
+The script runs Foundation tests and builds the iPhone 17 simulator app. For hosted XCTest execution, select `Philharmonic-SE`, choose an installed iPhone simulator, and press Command-U. Complete the separate physical-device checklist with the debugger detached.

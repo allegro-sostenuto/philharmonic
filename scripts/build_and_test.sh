@@ -6,9 +6,7 @@ if ! command -v xcodebuild >/dev/null; then
     exit 1
 fi
 swift test
-for scheme in Philharmonic-SE Philharmonic-17 Philharmonic-SE-CarPlay Philharmonic-17-CarPlay; do
-    xcodebuild -project Philharmonic.xcodeproj -scheme "$scheme" -configuration Debug \
-        -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
-done
+xcodebuild -project Philharmonic.xcodeproj -scheme Philharmonic-17 -configuration Debug \
+    -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 # To run the hosted tests: xcodebuild -project Philharmonic.xcodeproj -scheme Philharmonic-SE \
 #   -destination 'platform=iOS Simulator,name=<installed iPhone simulator>' test

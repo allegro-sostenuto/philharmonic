@@ -38,7 +38,7 @@ import Network
     @Published private(set) var bufferFailureMessage: String?
     var diagnostics: PlaybackDiagnostics { engine.diagnostics }
     var selectedAudioSource: StationAudioSource { settings.audioSource(for: selectedStation) }
-    var wdrLiveCaption: String? {
+    private var wdrLiveCaption: String? {
         selectedStation.metadataCapability == .wdr3 ? liveListing?.programme : nil
     }
 
@@ -1964,7 +1964,6 @@ import Network
                             requested: isPlaying, status: surfaceStatus,
                             visible: hasStartedEngine || stationSelectionKeepsActivity, station: selectedStation)
         #endif
-        NotificationCenter.default.post(name: .philharmonicPlaybackChanged, object: self)
     }
 
     private func refreshHomeWidgets() {
@@ -2286,4 +2285,3 @@ import Network
         }
     }
 }
-extension Notification.Name { static let philharmonicPlaybackChanged = Notification.Name("PhilharmonicPlaybackChanged") }

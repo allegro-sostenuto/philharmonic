@@ -45,19 +45,4 @@ final class PhilharmonicAppDelegate: NSObject, UIApplicationDelegate {
                      supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
         PlayerOrientation.supported
     }
-    #if CARPLAY
-    func application(_ application: UIApplication, configurationForConnecting session: UISceneSession,
-                     options: UIScene.ConnectionOptions) -> UISceneConfiguration {
-        if session.role.rawValue == "CPTemplateApplicationSceneSessionRoleApplication" {
-            let config = UISceneConfiguration(name: "CarPlay", sessionRole: session.role)
-            config.sceneClass = CPTemplateApplicationScene.self
-            config.delegateClass = CarPlaySceneDelegate.self
-            return config
-        }
-        return session.configuration
-    }
-    #endif
 }
-#if CARPLAY
-import CarPlay
-#endif

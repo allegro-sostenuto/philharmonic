@@ -4,7 +4,7 @@ The supported zero-cost workflow is **public GitHub repository → standard macO
 
 **Automatic renewal is best effort.** Free provisioning still expires after seven days. AltStore attempts background refresh; it does not guarantee permanent availability or zero manual intervention. Refreshing an existing build does not require recompiling it. A failed background refresh is handled with **My Apps → Refresh All**. [AltStore refresh behavior](https://faq.altstore.io/altstore-classic/your-altstore), [Apple free provisioning limits](https://developer.apple.com/help/account/basics/about-your-developer-account).
 
-The workflow and packaging checks are included. No GitHub build or physical AltStore installation has been executed for this project in the current workspace. The first successful Actions run and device installation remain required evidence; no compiled IPA is claimed in this source ZIP. Full findings are in [windows_workflow_review.md](docs/windows_workflow_review.md).
+SE releases are paused at **2.9.3, build 106**. Keep a copy of the SE IPA for reinstallation. The current workflow produces the iPhone 17 IPA. [SE build 106](https://github.com/allegro-sostenuto/philharmonic/actions/runs/43998933481)
 
 ## 1. Select the device build
 
@@ -19,7 +19,7 @@ Check **Settings → General → About** for the phone model and iOS version. Th
 
 **AltStore has its own OS requirement.** Current AltStore Classic 2.3 requires iOS 17.4 or later. For an SE still on iOS 16–17.3, current AltServer's documented compatibility selection downloads the latest compatible older AltStore release. Its availability and successful install must be checked on that phone; the current 2.3 IPA cannot be installed by ignoring its minimum OS. Philharmonic-SE itself retains the requested iOS 16 minimum. [AltStore release notes](https://faq.altstore.io/release-notes/altstore), [AltServer compatibility selection](https://faq.altstore.io/release-notes/altserver).
 
-Both packages include one Home Screen widget extension. The iPhone 17 extension also provides the Live Activity and Dynamic Island presentation. Both contain the same player core. Neither CI artifact includes the restricted full CarPlay app.
+Both packages include one Home Screen widget extension. The iPhone 17 extension also provides the Live Activity and Dynamic Island presentation.
 
 ## 2. Put the source in a public GitHub repository
 
@@ -44,17 +44,17 @@ Complete GitHub's normal sign-in if requested. If Git requests a commit author, 
 
 Leave `DEVELOPMENT_TEAM` blank in `Configuration/Signing.xcconfig` for this route. Keep `PHILHARMONIC_BUNDLE_PREFIX = org.personal.kusc` stable unless deliberately changing app identity. CI disables signing and does not need a unique registered developer identifier. AltStore performs personal provisioning during installation. Keep Apple passwords, certificates, profiles, and device identifiers outside the repository and GitHub secrets.
 
-## 3. Compile both device IPAs on GitHub
+## 3. Compile the iPhone 17 IPA on GitHub
 
 1. Open the repository's **Actions** tab and enable Actions if GitHub requests it.
 2. Open **Build unsigned iPhone apps**. Pushing to `main` or a `codex/` review branch, or updating a pull request, triggers it; **Run workflow** also starts it manually. Use the update's exact source revision when choosing an artifact.
-3. Wait for the SE and iPhone 17 jobs to finish successfully. Each runs the Foundation test suite before building the actual `iphoneos` target.
-4. Open the successful run's summary and download the artifact matching the phone from the table above. Artifact download may require signing into GitHub. [GitHub artifact downloads](https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-workflow-runs/downloading-workflow-artifacts).
+3. Wait for the iPhone 17 job to finish successfully. A standard run executes the Foundation test suite before building the `iphoneos` target.
+4. Open the successful run's summary and download `Philharmonic-17-unsigned-ipa`. Artifact download may require signing into GitHub. [GitHub artifact downloads](https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-workflow-runs/downloading-workflow-artifacts)
 5. Extract the downloaded artifact ZIP. The resulting `.ipa` is the file imported into AltStore. Keep a local copy; Actions artifacts in this workflow expire after 14 days.
 
-The supplied workflow uses standard `macos-26`, an explicitly selected Xcode 26 installation, shared `Philharmonic-SE` / `Philharmonic-17` schemes, Release configuration, and **`generic/platform=iOS`**. The build is a device binary, not a simulator app. Apple identity signing is disabled; packaging adds an identity-free ad-hoc signature carrying the widget App Group entitlement for AltStore. Checks verify the app/extension structure, matching group, device architecture/platform, deployment versions, and absence of provisioning material before artifact upload.
+The workflow packages the shared `Philharmonic-17` scheme in Release configuration for **`generic/platform=iOS`** on standard `macos-26` with Xcode 26. Packaging adds an ad-hoc signature carrying the widget App Group entitlement for AltStore. Checks verify the app and extension structure, matching group, device architecture, deployment versions, and signing before upload.
 
-The workflow runs only for public repositories. It excludes CarPlay schemes and contains no weekly schedule. GitHub rebuilds are needed after source changes or when an artifact needs to be regenerated; seven-day signing renewal happens through AltStore. Keep the standard runner label; larger runners are billed separately. [GitHub billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions).
+The workflow runs only for public repositories. GitHub builds the iPhone 17 IPA after source changes. AltStore handles seven-day signing renewal. Keep the standard runner label. GitHub bills larger runners separately. [GitHub billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions)
 
 The September 20 update preserves the app and extension identifiers. Install its IPA over the existing Philharmonic app using the same Apple account and retain the iPhone 17 extension. The `native-ui-screenshots` artifact, when present, is simulator evidence, not an installable app. Scheduled output preferences refer to an output actually selected through iOS; keep that device connected and selected until the start, or explicitly choose current-output fallback. Automatic playback and fades still require on-device verification after installing the update.
 
@@ -78,7 +78,7 @@ Use the current Windows AltServer release, particularly on recent iOS 26 version
 ## 5. Install on iPhone SE
 
 1. Complete AltServer setup for the second- or third-generation SE. On iOS 16–17.3, verify that AltServer selected a compatible older AltStore; 2.3 requires iOS 17.4.
-2. Download and extract `Philharmonic-SE-unsigned-ipa`, then place **`Philharmonic-SE-unsigned.ipa`** in the SE's Files app. A direct download to the phone also works; extract the GitHub artifact ZIP first.
+2. Use the saved **`Philharmonic-SE-unsigned.ipa`** from 2.9.3, build 106. Place it in the SE's Files app. If you download the build artifact first, extract its ZIP.
 3. Keep AltServer available on the same Wi-Fi network, or keep the phone connected by USB. Open **AltStore Classic → My Apps → +**, choose the IPA from Files, and complete the install.
 4. Confirm that **Philharmonic** appears under AltStore's My Apps and shows an expiry date. Open Philharmonic from the Home Screen.
 5. Confirm audio, lock-screen Play/Pause, background playback, rotation, and the in-app Live button. The buffer defaults to zero; its wheel setting is under the top-right gear.
@@ -113,7 +113,7 @@ AltStore Classic 2.3 also introduces Remote AltServer. That is a separate config
 
 A free account remains subject to seven-day profiles, up to three registered devices, three active apps per device, and ten App IDs. AltStore itself occupies an active-app slot; extensions affect App IDs. Account limits are not bypassed by CI or by refreshing. Two phones fit the documented device limit if other registrations leave capacity. [Apple limits](https://developer.apple.com/help/account/basics/about-your-developer-account), [AltStore active apps](https://faq.altstore.io/altstore-classic/activating-apps).
 
-## 8. Update after source changes
+## 8. Update iPhone 17 after source changes
 
 Commit and push changes from the same repository:
 
@@ -134,7 +134,7 @@ Download the new matching artifact and import its IPA through AltStore again usi
 
 ## 9. Capability boundary and troubleshooting
 
-**Full custom CarPlay is excluded from the free CI builds.** It requires Apple's managed audio entitlement and a matching provisioning profile. The optional CarPlay source and schemes remain in the project, but are not emitted by this workflow. Ordinary Bluetooth/AirPlay/vehicle audio is separate from that custom CarPlay UI. [Apple CarPlay entitlement process](https://developer.apple.com/documentation/carplay/requesting-carplay-entitlements).
+While Philharmonic is playing, CarPlay's built-in **Now Playing** screen can display its metadata and playback controls. A dedicated CarPlay app interface requires Apple approval and a matching provisioning profile. [Apple's CarPlay Developer Guide](https://developer.apple.com/download/files/CarPlay-Developer-Guide.pdf)
 
 | Symptom | Resolution |
 |---|---|
@@ -148,6 +148,5 @@ Download the new matching artifact and import its IPA through AltStore again usi
 | Philharmonic stops opening after a week | Restore AltServer connectivity and refresh; recover expired AltStore first if necessary. |
 | Recent iOS 26 app crashes after signing | Update Windows AltServer; 1.7.4 includes the documented iOS 26.4 signing fix. |
 | Dynamic Island missing | Verify the 17 IPA, retained extension, Live Activities permission, and foreground playback start. |
-| CarPlay entitlement failure | Use one of the two ordinary CI artifacts. |
 
 Complete the first-use and long-duration checks in [manual_test_plan.md](docs/manual_test_plan.md). Direct installation from a Mac remains documented separately in [mac_installation.md](docs/mac_installation.md); it is optional for this Windows workflow.

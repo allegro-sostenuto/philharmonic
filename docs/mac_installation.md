@@ -58,13 +58,13 @@ Changing only the app identifier while leaving the extension identifier unchange
 
 ## 4. Install on iPhone SE
 
-These instructions apply to the second- or third-generation SE on iOS 16 or later.
+Use the 2.9.3, build 106 IPA for the paused SE release. The Xcode steps below apply to development on a second- or third-generation SE on iOS 16 or later. [IPA installation guide](../installation_guides.md#5-install-on-iphone-se)
 
 1. Connect the SE to the Mac using a data-capable Lightning cable. Unlock the SE and accept **Trust This Computer** if shown.
 2. In Xcode, open **Window → Devices and Simulators**, select the phone, and wait for pairing and device preparation. Newer Xcode versions may present device management under **Device Hub** instead.
 3. On the SE, open **Settings → Privacy & Security → Developer Mode**. Turn it on, restart when prompted, then confirm after restart and enter the device passcode. If the setting is absent, initiate pairing from Xcode first. [Apple: enabling Developer Mode](https://developer.apple.com/documentation/xcode/enabling-developer-mode-on-a-device).
 4. Return to Xcode. In the top toolbar choose the **`Philharmonic-SE`** scheme and the connected physical SE as the run destination. Do not select an iPhone simulator or “Any iOS Device”.
-5. Confirm the `Philharmonic-SE` signing Team under **Signing & Capabilities**. Leave CarPlay variants unselected unless Apple has granted that capability.
+5. Confirm the `Philharmonic-SE` signing Team under **Signing & Capabilities**.
 6. Choose **Product → Run** or press **Command-R**. Allow Xcode to register the device and create development signing assets when prompted. Keep the phone unlocked for the initial installation.
 7. If the phone reports **Untrusted Developer**, follow the displayed trust instruction under **Settings → General → VPN & Device Management**, selecting the signing identity for this build. The exact label varies with iOS and profile type.
 8. When Philharmonic opens, allow notifications if scheduled-start fallback is required. Launch defaults to playing the live station; a failed connection returns to Play after the reconnect window.
@@ -93,19 +93,9 @@ Before or after its seven-day profile expires, reconnect the same phone, select 
 
 With paid membership, inspect the actual provisioning profile's expiration and renew it as required. No certificate, profile, password, or Apple Account credentials are included in this project.
 
-## 7. Optional full CarPlay installation
+## 7. CarPlay playback
 
-The normal schemes install without the restricted CarPlay entitlement. Audio may play through a vehicle's selected output without enabling the custom CarPlay app.
-
-Full CarPlay requires Apple approval and a matching provisioning profile:
-
-1. Submit an audio-app request through [Apple's CarPlay entitlement process](https://developer.apple.com/documentation/carplay/requesting-carplay-entitlements). The capability required here is **CarPlay Audio App (CarPlay framework)**, represented by `com.apple.developer.carplay-audio`.
-2. After approval, enable that additional capability on the exact app identifier in the developer account and generate a development profile containing the capability and the intended phone.
-3. Choose **`Philharmonic-SE-CarPlay`** or **`Philharmonic-17-CarPlay`**, matching the phone. Set the signing Team on the corresponding target. The 17 variant also embeds `PhilharmonicLiveActivity`; sign it with the same Team.
-4. If automatic signing cannot obtain the approved profile, select the CarPlay target, disable automatic signing, and choose the downloaded development profile. Do not alter the ordinary targets to require CarPlay.
-5. Build and run on the phone, then connect it to a compatible CarPlay head unit. Confirm programme rows are informational, with no seeking or sleep-timer controls.
-
-Simulator display of a CarPlay interface does not prove that a physical phone has the required provisioning. If the build reports a missing CarPlay entitlement, install the ordinary scheme until the account/profile issue is resolved. Copying an entitlement key into a plist cannot substitute for Apple approval.
+Open Apple's built-in **Now Playing** screen while Philharmonic is playing. It uses the app's system media metadata and controls. For WDR 3, the title shows the broadcaster's caption when available. [Apple's CarPlay documentation](https://developer.apple.com/videos/play/wwdc2017/719/)
 
 ## 8. First-use checks on both phones
 
@@ -130,7 +120,6 @@ Use [manual_test_plan.md](manual_test_plan.md) for the remaining device and long
 | Extension bundle identifier must begin with containing app identifier | Restore the shared-prefix relationship and rebuild. |
 | iPhone listed as unavailable | Unlock it, finish pairing/Developer Mode, and use a compatible Xcode release. For iOS 16 devices, use Xcode 26.x. |
 | App worked last week and now will not open | Renew the development profile by rebuilding and reinstalling with the same Team and identifiers. |
-| Missing CarPlay capability/profile | Use the ordinary scheme or provision the approved CarPlay profile. |
 | Dynamic Island activity absent | Verify the 17 scheme, embedded extension signing, Live Activities settings, and a foreground playback start. iOS can dismiss or deprioritize activities. |
 | Scheduled notification absent | Check notification authorization, Focus, and device power state. Charging standby is best effort; process termination defeats it. |
 | Play returns to idle after about a minute | Check network reachability and station service; the reconnect budget has expired. Press ordinary Play to begin a fresh attempt. |

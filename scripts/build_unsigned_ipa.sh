@@ -87,7 +87,7 @@ python3 scripts/validate_ipa.py "$ipa" --scheme "$scheme" --bundle-prefix "$bund
 (cd "$output" && shasum -a 256 "$scheme-unsigned.ipa" > "$scheme-unsigned.ipa.sha256")
 {
   echo "Scheme: $scheme"
-  echo "Configuration: Release (ordinary iPhone target; CarPlay excluded)"
+  echo "Configuration: Release (standard iPhone target)"
   echo "Build number: $build_number"
   echo "Bundle prefix: $bundle_prefix"
   echo "Source commit: $(git rev-parse HEAD 2>/dev/null || echo 'unavailable')"

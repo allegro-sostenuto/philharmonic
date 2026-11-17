@@ -18,7 +18,9 @@ modern=sorted(p.relative_to(ROOT).as_posix() for p in (ROOT/'Modern').rglob('*.s
 tests=sorted(p.relative_to(ROOT).as_posix() for p in (ROOT/'Tests').glob('*.swift'))
 ui_tests=sorted(p.relative_to(ROOT).as_posix() for p in (ROOT/'TestsUI').glob('*.swift'))
 resources=['Assets.xcassets','Flags.xcassets','Configuration/PrivacyInfo.xcprivacy']
-app_configs=[('Philharmonic-SE','16.0',False,False),('Philharmonic-17','26.0',True,False),('Philharmonic-SE-CarPlay','16.0',False,True),('Philharmonic-17-CarPlay','26.0',True,True)]
+app_configs=[('Philharmonic-SE','16.0','classic'),('Philharmonic-17','26.0','modern')]
+# Keep the SE app and its extension at the paused release's marketing version.
+marketing_versions={'classic':'2.9.3','modern':'2.9.3'}
 alltargets=[x[0] for x in app_configs]+['PhilharmonicLiveActivity','PhilharmonicWidgets','PhilharmonicTests','PhilharmonicUITests']
 base_config=file('Configuration/Signing.xcconfig')
 productrefs={}
@@ -38,24 +40,23 @@ def configlist(name,settings):
 def dep(target,other):
     proxy=add('proxy:'+target+other,isa='PBXContainerItemProxy',containerPortal=ref('project'),proxyType=1,remoteGlobalIDString=ref('target:'+other),remoteInfo=other)
     return add('dep:'+target+other,isa='PBXTargetDependency',target=ref('target:'+other),targetProxy=proxy)
-common={'SDKROOT':'iphoneos','SUPPORTED_PLATFORMS':'iphoneos iphonesimulator','TARGETED_DEVICE_FAMILY':'1','SWIFT_VERSION':'5.0','CLANG_ENABLE_MODULES':'YES','CLANG_ENABLE_OBJC_ARC':'YES','CODE_SIGN_STYLE':'Automatic','MARKETING_VERSION':'2.9.3','CURRENT_PROJECT_VERSION':'1','SUPPORTS_MACCATALYST':'NO','SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD':'NO','LD_RUNPATH_SEARCH_PATHS':'$(inherited) @executable_path/Frameworks','GENERATE_INFOPLIST_FILE':'NO','SWIFT_EMIT_LOC_STRINGS':'YES'}
-for name,version,is_modern,carplay in app_configs:
-    sources=shared+(modern if is_modern else [])+(['CarPlay/CarPlaySceneDelegate.swift'] if carplay else [])
+common={'SDKROOT':'iphoneos','SUPPORTED_PLATFORMS':'iphoneos iphonesimulator','TARGETED_DEVICE_FAMILY':'1','SWIFT_VERSION':'5.0','CLANG_ENABLE_MODULES':'YES','CLANG_ENABLE_OBJC_ARC':'YES','CODE_SIGN_STYLE':'Automatic','MARKETING_VERSION':marketing_versions['modern'],'CURRENT_PROJECT_VERSION':'1','SUPPORTS_MACCATALYST':'NO','SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD':'NO','LD_RUNPATH_SEARCH_PATHS':'$(inherited) @executable_path/Frameworks','GENERATE_INFOPLIST_FILE':'NO','SWIFT_EMIT_LOC_STRINGS':'YES'}
+for name,version,profile in app_configs:
+    is_modern=profile=='modern'
+    sources=shared+(modern if is_modern else [])
     phases=[add('sources:'+name,isa='PBXSourcesBuildPhase',buildActionMask=2147483647,files=[buildfile(name,p) for p in sources],runOnlyForDeploymentPostprocessing=0),add('resources:'+name,isa='PBXResourcesBuildPhase',buildActionMask=2147483647,files=[buildfile(name,p) for p in resources],runOnlyForDeploymentPostprocessing=0),add('frameworks:'+name,isa='PBXFrameworksBuildPhase',buildActionMask=2147483647,files=[],runOnlyForDeploymentPostprocessing=0)]
     extension='PhilharmonicLiveActivity' if is_modern else 'PhilharmonicWidgets'
     embed=add('embedfile:'+name,isa='PBXBuildFile',fileRef=productrefs[extension],settings={'ATTRIBUTES':['RemoveHeadersOnCopy']})
     phases.append(add('embed:'+name,isa='PBXCopyFilesBuildPhase',buildActionMask=2147483647,dstPath='',dstSubfolderSpec=13,files=[embed],name='Embed App Extensions',runOnlyForDeploymentPostprocessing=0))
     dependencies=[dep(name,extension)]
-    settings=dict(common,IPHONEOS_DEPLOYMENT_TARGET=version,PRODUCT_NAME='$(TARGET_NAME)',PRODUCT_MODULE_NAME='Philharmonic_SE' if not is_modern else 'Philharmonic_17',PRODUCT_BUNDLE_IDENTIFIER='$(PHILHARMONIC_BUNDLE_PREFIX).'+('modern' if is_modern else 'classic'),INFOPLIST_FILE='Configuration/'+('App-CarPlay.plist' if carplay else 'App.plist'),ASSETCATALOG_COMPILER_APPICON_NAME='AppIcon',SWIFT_ACTIVE_COMPILATION_CONDITIONS=' '.join(x for x in ['MODERN' if is_modern else '', 'CARPLAY' if carplay else ''] if x))
-    settings['CODE_SIGN_ENTITLEMENTS']='Configuration/'+('CarPlay.entitlements' if carplay else 'App.entitlements')
-    settings['PHILHARMONIC_PROFILE']='modern' if is_modern else 'classic'
+    settings=dict(common,MARKETING_VERSION=marketing_versions[profile],IPHONEOS_DEPLOYMENT_TARGET=version,PRODUCT_NAME='$(TARGET_NAME)',PRODUCT_MODULE_NAME='Philharmonic_17' if is_modern else 'Philharmonic_SE',PRODUCT_BUNDLE_IDENTIFIER='$(PHILHARMONIC_BUNDLE_PREFIX).'+profile,INFOPLIST_FILE='Configuration/App.plist',ASSETCATALOG_COMPILER_APPICON_NAME='AppIcon',SWIFT_ACTIVE_COMPILATION_CONDITIONS='MODERN' if is_modern else '',CODE_SIGN_ENTITLEMENTS='Configuration/App.entitlements',PHILHARMONIC_PROFILE=profile)
     add('target:'+name,isa='PBXNativeTarget',buildConfigurationList=configlist(name,settings),buildPhases=phases,buildRules=[],dependencies=dependencies,name=name,productName=name,productReference=productrefs[name],productType='com.apple.product-type.application')
 widget_sources=['Shared/Core/ProgrammeItem.swift','Shared/Core/WidgetPlaybackSnapshot.swift',
                 'Shared/System/WidgetPlaybackIntent.swift','Shared/UI/HomeWidgetView.swift','Widget/PhilharmonicHomeWidgets.swift']
 for name,profile,version,suffix in [('PhilharmonicLiveActivity','modern','26.0','activity'),('PhilharmonicWidgets','classic','16.0','widgets')]:
     sources=widget_sources+(['Modern/LiveActivityAttributes.swift','Modern/PlaybackIntents.swift','Widget/PhilharmonicLiveActivity.swift'] if profile=='modern' else [])
     phases=[add('sources:'+name,isa='PBXSourcesBuildPhase',buildActionMask=2147483647,files=[buildfile(name,p) for p in sources],runOnlyForDeploymentPostprocessing=0)]
-    settings=dict(common,IPHONEOS_DEPLOYMENT_TARGET=version,PRODUCT_NAME='$(TARGET_NAME)',PRODUCT_BUNDLE_IDENTIFIER='$(PHILHARMONIC_BUNDLE_PREFIX).'+profile+'.'+suffix,INFOPLIST_FILE='Configuration/Widget.plist',CODE_SIGN_ENTITLEMENTS='Configuration/App.entitlements',PHILHARMONIC_PROFILE=profile,APPLICATION_EXTENSION_API_ONLY='YES',SKIP_INSTALL='YES',SWIFT_ACTIVE_COMPILATION_CONDITIONS='WIDGET_EXTENSION'+(' MODERN' if profile=='modern' else ''),LD_RUNPATH_SEARCH_PATHS='$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks')
+    settings=dict(common,MARKETING_VERSION=marketing_versions[profile],IPHONEOS_DEPLOYMENT_TARGET=version,PRODUCT_NAME='$(TARGET_NAME)',PRODUCT_BUNDLE_IDENTIFIER='$(PHILHARMONIC_BUNDLE_PREFIX).'+profile+'.'+suffix,INFOPLIST_FILE='Configuration/Widget.plist',CODE_SIGN_ENTITLEMENTS='Configuration/App.entitlements',PHILHARMONIC_PROFILE=profile,APPLICATION_EXTENSION_API_ONLY='YES',SKIP_INSTALL='YES',SWIFT_ACTIVE_COMPILATION_CONDITIONS='WIDGET_EXTENSION'+(' MODERN' if profile=='modern' else ''),LD_RUNPATH_SEARCH_PATHS='$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks')
     add('target:'+name,isa='PBXNativeTarget',buildConfigurationList=configlist(name,settings),buildPhases=phases,buildRules=[],dependencies=[],name=name,productName=name,productReference=productrefs[name],productType='com.apple.product-type.app-extension')
 name='PhilharmonicTests'
 fixture_files=sorted(p.relative_to(ROOT).as_posix() for p in (ROOT/'Tests'/'Fixtures').iterdir() if p.suffix in {'.json', '.m3u8', '.xml'})
@@ -66,7 +67,7 @@ name='PhilharmonicUITests'
 phases=[add('sources:'+name,isa='PBXSourcesBuildPhase',buildActionMask=2147483647,files=[buildfile(name,p) for p in ui_tests],runOnlyForDeploymentPostprocessing=0)]
 settings=dict(common,IPHONEOS_DEPLOYMENT_TARGET='16.0',PRODUCT_NAME='$(TARGET_NAME)',PRODUCT_BUNDLE_IDENTIFIER='$(PHILHARMONIC_BUNDLE_PREFIX).uitests',GENERATE_INFOPLIST_FILE='YES',TEST_TARGET_NAME='Philharmonic-SE',SKIP_INSTALL='YES')
 add('target:'+name,isa='PBXNativeTarget',buildConfigurationList=configlist(name,settings),buildPhases=phases,buildRules=[],dependencies=[dep(name,'Philharmonic-SE')],name=name,productName=name,productReference=productrefs[name],productType='com.apple.product-type.bundle.ui-testing')
-for path in ['Configuration/App.plist','Configuration/App-CarPlay.plist','Configuration/Widget.plist','Configuration/App.entitlements','Configuration/CarPlay.entitlements']: file(path)
+for path in ['Configuration/App.plist','Configuration/Widget.plist','Configuration/App.entitlements']: file(path)
 products=add('products',isa='PBXGroup',children=list(productrefs.values()),name='Products',sourceTree='<group>')
 files=[i for i,o in objects.items() if o['isa']=='PBXFileReference' and o.get('sourceTree')!='BUILT_PRODUCTS_DIR']
 main=add('main',isa='PBXGroup',children=files+[products],sourceTree='<group>')
